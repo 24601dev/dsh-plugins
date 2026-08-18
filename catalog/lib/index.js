@@ -1197,6 +1197,52 @@ async function searchGithub(query, installed, harness) {
 // Hub first, GitHub second: first-party mods are checksummed and curated, so
 // they lead the list; the GitHub topic remains as the community long tail. A
 // hub outage never blocks the catalog — it just drops the priority section.
+// --- Demo mode (master suppression switch) ------------------------------------
+// Stashes the profile's bundle list and boots with only this catalog plugin,
+// so the interface can be shown with and without community plugins. The
+// catalog must stay loaded or there is no switch left to turn it back off.
+// Bundles are read at boot, so a restart applies the change.
+
+async function demoState() {
+  try {
+    const { manifest } = await readManifest();
+    const bundles = manifest.dsh?.profile?.bundles ?? [];
+    const stash = manifest.dsh?.catalog?.demoStash;
+    return {
+      suppressed: Array.isArray(stash),
+      active: bundles,
+      hidden: Array.isArray(stash) ? stash.filter((b) => b !== SELF) : [],
+    };
+  } catch {
+    return { suppressed: false, active: [], hidden: [] };
+  }
+}
+
+async function setDemoMode(on) {
+  const { path, manifest } = await readManifest();
+  manifest.dsh = manifest.dsh ?? {};
+  manifest.dsh.profile = manifest.dsh.profile ?? {};
+  manifest.dsh.catalog = manifest.dsh.catalog ?? {};
+  const current = Array.isArray(manifest.dsh.profile.bundles) ? manifest.dsh.profile.bundles : [];
+  const stash = manifest.dsh.catalog.demoStash;
+
+  if (on && !Array.isArray(stash)) {
+    manifest.dsh.catalog.demoStash = current;
+    manifest.dsh.profile.bundles = [SELF];
+    await writeManifest(path, manifest);
+    return { suppressed: true, hidden: current.filter((b) => b !== SELF), restart: true };
+  }
+  if (!on && Array.isArray(stash)) {
+    // Plugins installed while suppressed are kept — merge them into the restore.
+    const merged = [...stash, ...current.filter((b) => b !== SELF && !stash.includes(b))];
+    manifest.dsh.profile.bundles = merged;
+    delete manifest.dsh.catalog.demoStash;
+    await writeManifest(path, manifest);
+    return { suppressed: false, restored: merged, restart: true };
+  }
+  return { suppressed: Array.isArray(stash), noop: true };
+}
+
 async function searchAll(query) {
   const installed = await installedNames();
   const harness = await harnessVersion();
@@ -1205,6 +1251,7 @@ async function searchAll(query) {
   return {
     ...github,
     hub: { url: HUB_URL, ok: hub.ok, count: hub.items.length },
+    demo: await demoState(),
     updates: github.updates + hub.items.filter((item) => item.updateAvailable).length,
     items: [...hub.items, ...github.items],
   };
@@ -1378,6 +1425,29 @@ export function apply(ctx) {
           ...result,
           installed: installed.dependencies,
         });
+      } catch (error) {
+        sendJson(res, 500, { error: String(error?.message ?? error) });
+      }
+    },
+  }));
+
+  ctx.effect(() => ctx.webServer.register({
+    kind: "exact",
+    path: "/dsh-plugin-catalog/demo-mode",
+    async handler(req, res) {
+      try {
+        if (req.method === "GET") {
+          sendJson(res, 200, await demoState());
+          return;
+        }
+        if (req.method !== "POST") {
+          sendJson(res, 405, { error: "GET or POST required" });
+          return;
+        }
+        const body = await readJson(req);
+        const result = await setDemoMode(Boolean(body.on));
+        record("demo-mode", body.on ? "on" : "off", { ok: true, method: "manifest", stdout: "", stderr: "" });
+        sendJson(res, 200, result);
       } catch (error) {
         sendJson(res, 500, { error: String(error?.message ?? error) });
       }
