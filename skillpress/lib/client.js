@@ -155,6 +155,10 @@ Skills are executable modes. Do not put always-on policy here.
 .dshp-lead{margin:0;max-width:100%;font-size:13px;line-height:20px;color:var(--dsw-alias-label-tertiary);flex:none}
 .dshp-scroll{flex:1 1 auto;min-height:0;min-width:0;overflow:auto;display:flex;flex-direction:column;gap:12px}
 .dshp-scroll>*{flex:none}
+.dshp-tabs{display:flex;gap:4px;flex:none}
+.dshp-tab{border:1px solid transparent;background:transparent;color:var(--dsw-alias-label-tertiary);border-radius:8px;padding:4px 12px;font:inherit;font-size:12px;cursor:pointer}
+.dshp-tab:hover{color:var(--dsw-alias-label-primary)}
+.dshp-tab[data-on="1"]{color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3)}
 .dshp-bed{display:grid;grid-template-columns:minmax(0,280px) minmax(0,1fr);gap:14px;min-width:0;width:100%}
 .dshp-platen{display:flex;flex-direction:column;gap:8px;min-width:0;max-width:100%;overflow:hidden;padding:12px;border:1px solid var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-bg-layer-2)}
 .dshp-platen h2{margin:0;font:inherit;font-size:14px;font-weight:600;color:var(--dsw-alias-label-primary)}
@@ -466,6 +470,7 @@ Skills are executable modes. Do not put always-on policy here.
       const [ticket, setTicket] = React.useState(null);
       const [cards, setCards] = React.useState([]);
       const [picked, setPicked] = React.useState("");
+      const [tab, setTab] = React.useState("gallery");
       const plateRef = React.useRef(plate);
       plateRef.current = plate;
 
@@ -679,6 +684,7 @@ Skills are executable modes. Do not put always-on policy here.
           });
           setPicked(body.name || result.name);
           await loadCards();
+          setTab("gallery");
           note(`Saved ${body.name || result.name} to the card gallery.`);
         } catch (error) {
           note(String(error.message || error), true);
@@ -728,6 +734,7 @@ Skills are executable modes. Do not put always-on policy here.
           setImage(new File([blob], `${name}.png`, { type: "image/png" }));
         }
         setPicked(name);
+        setTab("create");
         note(`Loaded ${name} into the press. Press again to overwrite.`);
       }
 
@@ -776,8 +783,23 @@ Skills are executable modes. Do not put always-on policy here.
         React.createElement("p", { className: "dshp-lead" },
           "Ask the chat to write a skill, persona, or role — it lands in this press. Press a card to mint the PNG. Load wears a persona or role, or puts a skill on the soul bar (or the role bar if a job is worn).",
         ),
+        React.createElement("div", { className: "dshp-tabs" },
+          React.createElement("button", {
+            type: "button",
+            className: "dshp-tab",
+            "data-on": tab === "gallery" ? "1" : "0",
+            onClick: () => setTab("gallery"),
+          }, `Gallery${cards.length ? ` (${cards.length})` : ""}`),
+          React.createElement("button", {
+            type: "button",
+            className: "dshp-tab",
+            "data-on": tab === "create" ? "1" : "0",
+            onClick: () => setTab("create"),
+          }, "Create"),
+        ),
         React.createElement("div", { className: "dshp-scroll" },
-        React.createElement("section", {
+        tab === "gallery"
+          ? React.createElement("section", {
           className: "dshp-platen",
           onDragOver: (event) => {
             event.preventDefault();
@@ -849,8 +871,10 @@ Skills are executable modes. Do not put always-on policy here.
             : React.createElement("p", { className: `dshp-gallery-empty${over === "gallery" ? " over" : ""}` },
                 "No cards yet.",
               ),
-        ),
-        React.createElement("div", { className: "dshp-bed" },
+        )
+          : null,
+        tab === "create"
+          ? React.createElement("div", { className: "dshp-bed" },
           React.createElement("section", { className: "dshp-platen" },
             React.createElement("h2", null, "Face"),
             React.createElement("p", { className: "dshp-hint" }, "Optional. No picture → a typed cover from the card name."),
@@ -945,8 +969,10 @@ Skills are executable modes. Do not put always-on policy here.
               React.createElement("button", { type: "button", className: "dshp-btn", onClick: () => { setPlate({}); setSkillMd(TEMPLATES[kind]); } }, "Clear extras"),
             ),
           ),
-        ),
-        React.createElement("div", { className: "dshp-press" },
+        )
+          : null,
+        tab === "create"
+          ? React.createElement("div", { className: "dshp-press" },
           React.createElement("button", {
             type: "button",
             className: "dshp-btn dshp-btn-primary",
@@ -954,8 +980,9 @@ Skills are executable modes. Do not put always-on policy here.
             onClick: () => void onPress(),
           }, busy ? "Pressing…" : "Press card"),
           React.createElement("p", { className: `dshp-status${err ? " err" : ""}` }, status),
-        ),
-        ticket ? React.createElement("div", { className: "dshp-ticket" },
+        )
+          : null,
+        tab === "create" && ticket ? React.createElement("div", { className: "dshp-ticket" },
           React.createElement("h3", null, ticket.name),
           React.createElement("p", null, `${ticket.fileCount} files · ${ticket.bytes.toLocaleString()} byte PNG · sha256 ${ticket.sha256}`),
           ticket.card ? React.createElement("p", null, `Stored in the gallery.`) : null,
