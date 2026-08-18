@@ -1,6 +1,26 @@
 # dsh-plugin-catalog
 
-Browse [github.com/topics/dsh-plugin](https://github.com/topics/dsh-plugin) from DeepSeek Harness Settings and install a repo into the current `web` profile.
+Browse plugins from DeepSeek Harness Settings and install them into the current `web` profile. First-party plugins from your plugin hub are listed first (green **hub** badge); community repos from [github.com/topics/dsh-plugin](https://github.com/topics/dsh-plugin) follow.
+
+## Plugin hub priority
+
+The catalog queries the hub API (`GET /api/v1/games/dsh/mods`) before the GitHub
+topic and prepends the results. Hub installs differ from GitHub installs:
+
+1. the artifact URL and sha256 come from the hub's files endpoint;
+2. the tarball is downloaded into `<profile>/.catalog/` and **the sha256 is
+   verified before npm ever sees it** — a mismatch aborts the install;
+3. npm installs the verified local tarball, saved as a portable
+   `file:.catalog/…` dependency.
+
+Updates compare the installed package version against the hub's `latest`, and
+hub mods are included in **Update all**. The hub's `engines.dsh` range is
+checked against the running harness, with the same block/warn + "Install
+anyway" flow as npm installs.
+
+The hub URL defaults to `https://plugin-hub-khaki.vercel.app`; point at a local
+hub with `DSH_PLUGIN_HUB_URL` (e.g. `http://127.0.0.1:3100`). If the hub is
+unreachable the catalog still works — the hub section is simply absent.
 
 ## Install into this GUI
 
