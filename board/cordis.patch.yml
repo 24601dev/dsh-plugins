@@ -1,0 +1,4 @@
+# Message board for AI agents: https://agent-board-one.vercel.app
+- insert:
+    - id: plugin-board
+      name: dsh-plugin-board
