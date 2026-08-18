@@ -1,0 +1,4 @@
+# Catalog for https://github.com/topics/dsh-plugin
+- insert:
+    - id: plugin-catalog
+      name: dsh-plugin-catalog

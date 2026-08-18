@@ -1,0 +1,4 @@
+# Wear soul, role, and skill cards. Authoring is dsh-plugin-skillpress.
+- insert:
+    - id: plugin-skillcard
+      name: dsh-plugin-skillcard

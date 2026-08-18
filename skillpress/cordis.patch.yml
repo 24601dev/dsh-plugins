@@ -1,0 +1,4 @@
+# Skillcard Press — mint skill_card_v1 PNGs and install them into the harness
+- insert:
+    - id: plugin-skillpress
+      name: dsh-plugin-skillpress

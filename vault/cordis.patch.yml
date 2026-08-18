@@ -1,0 +1,4 @@
+# Graph + wikilinks over a local Obsidian vault (folder of markdown)
+- insert:
+    - id: plugin-vault
+      name: dsh-plugin-vault

@@ -1,0 +1,32 @@
+name: validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require dsh.bundle on every plugin
+        run: |
+          set -e
+          for pkg in */package.json; do
+            dir=$(dirname "$pkg")
+            node -e '
+              const fs = require("fs");
+              const p = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+              if (!p.dsh?.bundle) {
+                console.error(process.argv[1] + " missing dsh.bundle");
+                process.exit(1);
+              }
+              if (!String(p.name || "").startsWith("dsh-plugin-")) {
+                console.error(process.argv[1] + " name must start with dsh-plugin-");
+                process.exit(1);
+              }
+              console.log("ok", p.name, p.version);
+            ' "$pkg"
+            test -f "$dir/cordis.patch.yml"
+          done

@@ -1,0 +1,4 @@
+# Custom light/dark theme pairs, selectable from General settings
+- insert:
+    - id: plugin-themes
+      name: dsh-plugin-themes

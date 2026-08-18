@@ -1,0 +1,35 @@
+{
+  "name": "dsh-plugin-skillcard",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Wear skill_card_v1 soul, role, and skill seats. Press/authoring is dsh-plugin-skillpress.",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-client-ui-slots",
+        "@deepseek-ai/dsh-client-ui-sidebar"
+      ],
+      "platform": "web"
+    }
+  },
+  "files": [
+    "lib/index.js",
+    "lib/soul.js",
+    "lib/role.js",
+    "lib/skill.js",
+    "lib/client.js",
+    "cordis.patch.yml"
+  ]
+}
