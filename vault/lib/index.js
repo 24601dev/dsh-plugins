@@ -424,6 +424,39 @@ export function apply(ctx) {
     },
   }));
 
+  // Files view: write note markdown back. Same guards as the read path —
+  // resolve inside the vault, refuse anything that escapes it.
+  ctx.effect(() => ctx.webServer.register({
+    kind: "exact",
+    path: "/dsh-plugin-vault/save",
+    async handler(req, res) {
+      if (req.method !== "POST") {
+        sendJson(res, 405, { error: "POST required" });
+        return;
+      }
+      try {
+        const body = await readJson(req);
+        const id = typeof body.id === "string" ? body.id : "";
+        const text = typeof body.text === "string" ? body.text : "";
+        if (!id) throw new Error("id required");
+        if (text.length > MAX_NOTE_BYTES) throw new Error(`note exceeds ${MAX_NOTE_BYTES} bytes`);
+        const { root, notes } = await vaultIndex();
+        const note = findNote(notes, id);
+        if (!note) {
+          sendJson(res, 404, { error: "Note not found", id });
+          return;
+        }
+        const file = resolve(root, note.rel);
+        if (!insideVault(root, file)) throw new Error("unsafe path");
+        await writeFile(file, text, "utf8");
+        bumpCache();
+        sendJson(res, 200, { ok: true, id: note.id, rel: note.rel, bytes: Buffer.byteLength(text) });
+      } catch (error) {
+        sendJson(res, 400, { error: String(error?.message ?? error) });
+      }
+    },
+  }));
+
   ctx.systemPrompt.section({
     name: "tool:vault",
     order: 115,
