@@ -539,9 +539,14 @@ Skills are executable modes. Do not put always-on policy here.
         });
       }
 
+      // OS junk that should never land on the plate (or in a pressed card).
+      const JUNK_FILE = /^(?:\.DS_Store|Thumbs\.db|desktop\.ini)$/i;
+
       async function absorbFile(file, rel) {
         const name = (rel || file.webkitRelativePath || file.name).replace(/\\/g, "/");
         if (!name || name.endsWith("/")) return false;
+        const baseName = name.split("/").pop();
+        if (JUNK_FILE.test(baseName) || baseName.startsWith("._")) return false;
         if (/\.zip$/i.test(name) || (file.name && /\.zip$/i.test(file.name))) {
           note("Unzip first, or add the folder. Zip files are not unpacked here.", true);
           return false;
