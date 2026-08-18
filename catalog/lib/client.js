@@ -303,7 +303,30 @@ window.__ModuleLoader__.load({
         }
       }
 
+      async function toggleDemo(on) {
+        setLog(null);
+        try {
+          const response = await fetch("/dsh-plugin-catalog/demo-mode", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ on }),
+          });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
+          setLog({
+            kind: "notice",
+            text: on
+              ? `Demo mode on — ${result.hidden?.length ?? 0} plugin${(result.hidden?.length ?? 0) === 1 ? "" : "s"} will be hidden. Restart the GUI (Dock icon) to see the bare interface.`
+              : `Demo mode off — ${result.restored?.length ?? 0} plugin${(result.restored?.length ?? 0) === 1 ? "" : "s"} restored. Restart the GUI (Dock icon) to load them.`,
+          });
+          await load(query);
+        } catch (error) {
+          setLog({ kind: "error", text: String(error?.message ?? error) });
+        }
+      }
+
       const items = state.data?.items ?? [];
+      const demo = state.data?.demo;
 
       return React.createElement("section", { className: "dshpc-root" },
         React.createElement("p", { className: "dshpc-lead" },
@@ -313,6 +336,26 @@ window.__ModuleLoader__.load({
           React.createElement("a", { href: "https://github.com/topics/dsh-plugin", target: "_blank", rel: "noreferrer" }, "dsh-plugin"),
           " on GitHub. Updates are opt-in: nothing is upgraded until you click Update. After Install or Update, click the Dock icon to restart.",
         ),
+        state.status === "ready"
+          ? React.createElement("div", { className: "dshpc-toolbar" },
+              React.createElement("label", {
+                className: "dshpc-note",
+                style: { display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer" },
+              },
+                React.createElement("input", {
+                  type: "checkbox",
+                  checked: Boolean(demo?.suppressed),
+                  disabled: Boolean(busy),
+                  onChange: (event) => void toggleDemo(event.target.checked),
+                }),
+                "Demo mode — hide all other plugins",
+              ),
+              demo?.suppressed
+                ? React.createElement("span", { className: "dshpc-note" },
+                    `${demo.hidden.length} hidden. Only this catalog loads — flip off to bring everything back.`)
+                : null,
+            )
+          : null,
         React.createElement("form", {
           className: "dshpc-search",
           onSubmit: (event) => {
