@@ -13,7 +13,7 @@ window.__ModuleLoader__.load({
 .dshv-form button,.dshv-modalhead button{height:36px;padding:0 12px;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);color:var(--dsw-alias-label-primary);border-radius:8px;font:inherit;font-size:13px;cursor:pointer}
 .dshv-form button:hover,.dshv-modalhead button:hover{background:var(--dsw-alias-interactive-bg-hover)}
 .dshv-err{margin:0;color:var(--dsw-alias-state-error-primary);font-size:12px}
-.dshv-view{box-sizing:border-box;display:flex;height:100%;min-height:420px;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary);overflow:hidden}
+.dshv-view{box-sizing:border-box;display:flex;flex-direction:column;height:100%;min-height:420px;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary);overflow:hidden}
 .dshv-stage{position:relative;flex:1;min-width:0}
 .dshv-canvas{display:block;width:100%;height:100%;cursor:grab;touch-action:none;overscroll-behavior:none;--dshv-edge:var(--dsw-alias-border-l2);--dshv-node:var(--dsw-alias-state-business-primary);--dshv-node-hot:var(--dsw-alias-label-primary);--dshv-ghost:var(--dsw-alias-label-tertiary);--dshv-label:var(--dsw-alias-label-primary)}
 .dshv-canvas:active{cursor:grabbing}
@@ -42,6 +42,26 @@ window.__ModuleLoader__.load({
 .dshv-modalhead button{height:32px}
 .dshv-modal .dshv-row{max-width:none}
 .dshv-modalgraph{flex:1;min-height:0;border:1px solid var(--dsw-alias-border-l2);border-radius:8px;overflow:hidden;background:var(--dsw-alias-bg-layer-1)}
+.dshv-tabbar{display:flex;gap:4px;padding:8px 12px;border-bottom:1px solid var(--dsw-alias-border-l2);flex:none;background:var(--dsw-alias-bg-base)}
+.dshv-tab{border:1px solid transparent;background:transparent;color:var(--dsw-alias-label-tertiary);border-radius:8px;padding:4px 12px;font:inherit;font-size:12px;cursor:pointer}
+.dshv-tab:hover{color:var(--dsw-alias-label-primary)}
+.dshv-tab[data-on="1"]{color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3)}
+.dshv-main{flex:1;min-height:0;display:flex;overflow:hidden}
+.dshv-files{box-sizing:border-box;width:230px;flex:none;border-right:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2);overflow:auto;padding:8px 6px}
+.dshv-frow{display:flex;align-items:center;gap:6px;box-sizing:border-box;width:100%;border:0;background:none;color:var(--dsw-alias-label-secondary);font:inherit;font-size:12px;padding:4px 8px;border-radius:6px;cursor:pointer;text-align:left}
+.dshv-frow span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.dshv-frow:hover{background:var(--dsw-alias-interactive-bg-hover)}
+.dshv-frow[data-on="1"]{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1)}
+.dshv-fcaret{flex:none;width:10px;color:var(--dsw-alias-label-tertiary);font-size:10px}
+.dshv-editor{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden}
+.dshv-edhead{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--dsw-alias-border-l2);flex:none}
+.dshv-edtitle{flex:1;min-width:0;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dshv-edstate{font-size:11px;color:var(--dsw-alias-label-tertiary);flex:none}
+.dshv-edsave{height:28px;padding:0 12px;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);color:var(--dsw-alias-label-primary);border-radius:8px;font:inherit;font-size:12px;cursor:pointer;flex:none}
+.dshv-edsave:disabled{opacity:.5;cursor:default}
+.dshv-edsave:not(:disabled):hover{border-color:var(--dsw-alias-state-business-primary)}
+.dshv-edarea{flex:1;min-height:0;border:0;outline:none;resize:none;background:transparent;color:var(--dsw-alias-label-primary);padding:12px 14px;font:12px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace}
+.dshv-edempty{flex:1;display:flex;align-items:center;justify-content:center;color:var(--dsw-alias-label-tertiary);font-size:13px;padding:24px;text-align:center}
 `;
 
     if (typeof document !== "undefined") {
@@ -498,11 +518,157 @@ window.__ModuleLoader__.load({
       });
     }
 
+    // Folder/file tree from note rel paths: folders first, then files, both
+    // alphabetical. Root files live in the "" folder.
+    function buildTree(nodes) {
+      const root = { name: "", children: new Map(), notes: [] };
+      for (const node of nodes) {
+        const parts = String(node.rel || node.id).split("/").filter(Boolean);
+        let dir = root;
+        for (let i = 0; i < parts.length - 1; i += 1) {
+          const part = parts[i];
+          if (!dir.children.has(part)) dir.children.set(part, { name: part, children: new Map(), notes: [] });
+          dir = dir.children.get(part);
+        }
+        dir.notes.push(node);
+      }
+      return root;
+    }
+
+    function TreeRows({ dir, depth, open, onToggle, selected, onPick }) {
+      const folders = [...dir.children.values()].sort((a, b) => a.name.localeCompare(b.name));
+      const notes = dir.notes.slice().sort((a, b) => (a.title || a.id).localeCompare(b.title || b.id));
+      const rows = [];
+      for (const folder of folders) {
+        const key = folder.name;
+        const path = `${depth}-${key}`;
+        const isOpen = open.has(path);
+        rows.push(React.createElement("button", {
+          key: `d-${path}`,
+          type: "button",
+          className: "dshv-frow",
+          style: { paddingLeft: 8 + depth * 14 },
+          onClick: () => onToggle(path),
+        },
+          React.createElement("span", { className: "dshv-fcaret" }, isOpen ? "▾" : "▸"),
+          React.createElement("span", null, `📁 ${folder.name}`),
+        ));
+        if (isOpen) {
+          rows.push(React.createElement(TreeRows, {
+            key: `c-${path}`,
+            dir: folder, depth: depth + 1, open, onToggle, selected, onPick,
+          }));
+        }
+      }
+      for (const note of notes) {
+        rows.push(React.createElement("button", {
+          key: `f-${note.id}`,
+          type: "button",
+          className: "dshv-frow",
+          "data-on": selected === note.id ? "1" : "0",
+          style: { paddingLeft: 8 + depth * 14 + 10 },
+          title: note.rel,
+          onClick: () => onPick(note),
+        }, React.createElement("span", null, note.title || note.id)));
+      }
+      return React.createElement(React.Fragment, null, ...rows);
+    }
+
+    function FilesView({ graph, error }) {
+      const [openNote, setOpenNote] = React.useState(null);
+      const [text, setText] = React.useState("");
+      const [dirty, setDirty] = React.useState(false);
+      const [status, setStatus] = React.useState("");
+      const [saving, setSaving] = React.useState(false);
+      const [open, setOpen] = React.useState(() => new Set());
+
+      const onToggle = React.useCallback((path) => {
+        setOpen((cur) => {
+          const next = new Set(cur);
+          if (next.has(path)) next.delete(path);
+          else next.add(path);
+          return next;
+        });
+      }, []);
+
+      const pick = React.useCallback((node) => {
+        setStatus("");
+        setDirty(false);
+        api(`/dsh-plugin-vault/note?id=${encodeURIComponent(node.id)}`).then((body) => {
+          setOpenNote(body);
+          setText(body.text || "");
+        }).catch((err) => setStatus(String(err.message)));
+      }, []);
+
+      async function save() {
+        if (!openNote || saving) return;
+        setSaving(true);
+        setStatus("");
+        try {
+          await api("/dsh-plugin-vault/save", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ id: openNote.id, text }),
+          });
+          setDirty(false);
+          setStatus("Saved.");
+        } catch (err) {
+          setStatus(String(err.message));
+        } finally {
+          setSaving(false);
+        }
+      }
+
+      if (!graph || !graph.nodes?.length) {
+        return React.createElement("div", { className: "dshv-edempty" },
+          error || "Set a vault folder in Settings → Vault, then open this tab again.");
+      }
+
+      return React.createElement(React.Fragment, null,
+        React.createElement("div", { className: "dshv-files" },
+          React.createElement(TreeRows, {
+            dir: buildTree(graph.nodes),
+            depth: 0, open, onToggle, selected: openNote?.id, onPick: pick,
+          }),
+        ),
+        React.createElement("div", { className: "dshv-editor" },
+          openNote
+            ? React.createElement(React.Fragment, null,
+                React.createElement("div", { className: "dshv-edhead" },
+                  React.createElement("span", { className: "dshv-edtitle" }, openNote.rel || openNote.id),
+                  React.createElement("span", { className: "dshv-edstate" }, status || (dirty ? "Unsaved changes" : "")),
+                  React.createElement("button", {
+                    type: "button",
+                    className: "dshv-edsave",
+                    disabled: !dirty || saving,
+                    onClick: () => void save(),
+                  }, saving ? "Saving…" : "Save"),
+                ),
+                React.createElement("textarea", {
+                  className: "dshv-edarea",
+                  value: text,
+                  spellCheck: false,
+                  "aria-label": `Edit ${openNote.id}`,
+                  onChange: (event) => { setText(event.target.value); setDirty(true); setStatus(""); },
+                  onKeyDown: (event) => {
+                    if ((event.metaKey || event.ctrlKey) && event.key === "s") {
+                      event.preventDefault();
+                      void save();
+                    }
+                  },
+                }),
+              )
+            : React.createElement("div", { className: "dshv-edempty" }, "Pick a note on the left to edit it."),
+        ),
+      );
+    }
+
     function VaultView() {
       const [graph, setGraph] = React.useState(null);
       const [error, setError] = React.useState("");
       const [selected, setSelected] = React.useState(null);
       const [note, setNote] = React.useState(null);
+      const [view, setView] = React.useState("graph");
 
       const load = React.useCallback(() => {
         setError("");
@@ -534,6 +700,25 @@ window.__ModuleLoader__.load({
       React.useEffect(() => { load(); }, [load]);
 
       return React.createElement("div", { className: "dshv-view" },
+        React.createElement("div", { className: "dshv-tabbar" },
+          React.createElement("button", {
+            type: "button",
+            className: "dshv-tab",
+            "data-on": view === "graph" ? "1" : "0",
+            onClick: () => setView("graph"),
+          }, "Graph"),
+          React.createElement("button", {
+            type: "button",
+            className: "dshv-tab",
+            "data-on": view === "files" ? "1" : "0",
+            onClick: () => setView("files"),
+          }, "Files"),
+        ),
+        view === "files"
+          ? React.createElement("div", { className: "dshv-main" },
+              React.createElement(FilesView, { graph, error }),
+            )
+          : React.createElement("div", { className: "dshv-main" },
         React.createElement("div", { className: "dshv-stage" },
           graph && graph.nodes.length
             ? React.createElement(GraphCanvas, { graph, selected, onSelect: setSelected })
@@ -570,6 +755,7 @@ window.__ModuleLoader__.load({
             href: note.obsidian,
           }, "Open in Obsidian") : null,
         ) : null,
+          ),
       );
     }
 
