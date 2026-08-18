@@ -1,6 +1,6 @@
 {
   "name": "dsh-plugin-catalog",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "description": "Plugin hub (priority) plus GitHub topic dsh-plugin browser; installs into the current profile",
   "type": "module",
