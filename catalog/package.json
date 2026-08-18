@@ -2,7 +2,7 @@
   "name": "dsh-plugin-catalog",
   "version": "0.1.0",
   "private": true,
-  "description": "Browse GitHub topic dsh-plugin and install repos into the current profile",
+  "description": "Browse Plugin Hub from Settings and install Harness plugins into this profile",
   "type": "module",
   "main": "lib/index.js",
   "exports": {

@@ -306,9 +306,9 @@ window.__ModuleLoader__.load({
 
       return React.createElement("section", { className: "dshpc-root" },
         React.createElement("p", { className: "dshpc-lead" },
-          "Community plugins tagged ",
-          React.createElement("a", { href: "https://github.com/topics/dsh-plugin", target: "_blank", rel: "noreferrer" }, "dsh-plugin"),
-          " on GitHub. Updates are opt-in: nothing is upgraded until you click Update. After Install or Update, click the Dock icon to restart.",
+          "Plugins from ",
+          React.createElement("a", { href: "https://plugin-hub-khaki.vercel.app/harness", target: "_blank", rel: "noreferrer" }, "Plugin Hub"),
+          ". After Install or Update, restart the GUI.",
         ),
         React.createElement("form", {
           className: "dshpc-search",
@@ -319,7 +319,7 @@ window.__ModuleLoader__.load({
         },
           React.createElement("input", {
             value: query,
-            placeholder: "Search the topic…",
+            placeholder: "Search the hub…",
             onChange: (event) => setQuery(event.target.value),
             // The harness swallows Enter before the form submit fires.
             onKeyDown: (event) => {
@@ -339,15 +339,14 @@ window.__ModuleLoader__.load({
                 onClick: () => {
                   const n = state.data.updates;
                   if (!window.confirm(
-                    `Update ${n} plugin${n === 1 ? "" : "s"} to the latest npm version?\n\n` +
-                    "Only packages that look compatible with this harness will be updated. " +
+                    `Update ${n} plugin${n === 1 ? "" : "s"} to the latest hub version?\n\n` +
                     "Incompatible ones are skipped unless you update them one by one.",
                   )) return;
                   mutateAll(false);
                 },
               }, busy?.kind === "update-all" ? "Updating…" : `Update all (${state.data.updates})`),
               React.createElement("span", { className: "dshpc-note" },
-                `Harness ${state.data.harness || "unknown"}. Skills and this catalog plugin are not updated.`),
+                `Harness ${state.data.harness || "unknown"}. This catalog plugin is not bulk-updated.`),
             )
           : null,
         // Results sit ABOVE the list: below it they are 50 cards off-screen.
@@ -377,9 +376,9 @@ window.__ModuleLoader__.load({
                 : null,
             )
           : null,
-        state.status === "loading" ? React.createElement("p", { className: "dshpc-status" }, "Loading GitHub topic…") : null,
+        state.status === "loading" ? React.createElement("p", { className: "dshpc-status" }, "Loading hub…") : null,
         state.status === "error" ? React.createElement("p", { className: "dshpc-error" }, state.message) : null,
-        state.status === "ready" ? React.createElement("p", { className: "dshpc-status" }, `${state.data.total} repositories`) : null,
+        state.status === "ready" ? React.createElement("p", { className: "dshpc-status" }, `${state.data.total} plugins`) : null,
         React.createElement("ul", { className: "dshpc-cards" },
           items.map((item) => {
             const tr = translations[item.id];
@@ -407,12 +406,11 @@ window.__ModuleLoader__.load({
                   ),
                   React.createElement("p", { className: "dshpc-meta" },
                     [
-                      `★ ${item.stars.toLocaleString()}`,
-                      item.language || "unknown",
-                      item.spec,
+                      item.spec?.startsWith("hub:") ? null : (item.stars != null ? `★ ${item.stars.toLocaleString()}` : null),
+                      item.language || null,
                       item.installedVersion
                         ? `v${item.installedVersion}${item.latestVersion && item.latestVersion !== item.installedVersion ? ` → ${item.latestVersion}` : ""}`
-                        : null,
+                        : item.latestVersion ? `v${item.latestVersion}` : null,
                     ].filter(Boolean).join(" · "),
                   ),
                 ),
