@@ -1647,6 +1647,11 @@ window.__ModuleLoader__.load({
 .dshsb-unequip{position:absolute;top:-6px;right:-6px;width:16px;height:16px;padding:0;border-radius:50%;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);color:var(--dsw-alias-label-primary);font:inherit;font-size:11px;line-height:14px;cursor:pointer;opacity:0;transition:opacity .12s ease}
 .dshsb-slotwrap:hover .dshsb-unequip,.dshsb-slot:focus-visible + .dshsb-unequip,.dshsb-unequip:focus-visible{opacity:1}
 .dshsb-halo{pointer-events:none;position:absolute;inset:-5px;border-radius:11px;opacity:0}
+.dshsb-tip{position:absolute;bottom:calc(100% + 10px);left:50%;transform:translate(-50%,4px);z-index:50;width:max-content;max-width:220px;padding:8px 10px;border-radius:8px;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);box-shadow:var(--dsw-shadow-lv2,0 8px 24px rgba(0,0,0,.24));pointer-events:none;opacity:0;transition:opacity .12s ease,transform .12s ease;display:flex;flex-direction:column;gap:3px;text-align:left}
+.dshsb-slotwrap:hover .dshsb-tip,.dshsb-slot:focus-visible ~ .dshsb-tip{opacity:1;transform:translate(-50%,0)}
+.dshsb-tip-name{font-size:12px;font-weight:600;color:var(--dsw-alias-label-primary);line-height:16px}
+.dshsb-tip-desc{font-size:11px;line-height:15px;color:var(--dsw-alias-label-tertiary);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.dshsb-tip:after{content:"";position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:var(--dsw-alias-border-l2)}
 .dshsb-slot[data-casting="1"] .dshsb-halo{opacity:1;background:conic-gradient(from 0deg,var(--dsw-alias-state-business-primary),transparent 28%,var(--dsw-alias-state-business-primary) 52%,transparent 78%,var(--dsw-alias-state-business-primary));filter:blur(1px);animation:dshsb-spin .78s linear}
 .dshsb-live{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
 .dshsb-file{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
@@ -2181,7 +2186,7 @@ body>[role="status"]:has(svg[viewBox="0 0 115 84"]){display:none!important}
                 "data-casting": casting === `${kind}:${index}` ? "1" : "0",
                 disabled: Boolean(skill) && !inputActions,
                 title: skill
-                  ? `${skill.name}${skill.description ? ` — ${skill.description}` : ""}\nClick to load into the composer. Right-click to unequip.`
+                  ? undefined
                   : `Empty slot ${index + 1}. Drop a skill card PNG, or click to pick one from the gallery.`,
                 "aria-label": skill ? `Cast ${skill.name}` : `Load skill on slot ${index + 1}`,
                 draggable: Boolean(skill),
@@ -2252,6 +2257,15 @@ body>[role="status"]:has(svg[viewBox="0 0 115 84"]){display:none!important}
                   ? React.createElement("img", { className: "dshsb-face", src: skill.thumb, alt: "" })
                   : React.createElement("span", { className: "dshsb-empty", "aria-hidden": "true" }),
               ),
+              skill
+                ? React.createElement("span", { className: "dshsb-tip", role: "tooltip" },
+                    React.createElement("span", { className: "dshsb-tip-name" }, skill.name),
+                    skill.description
+                      ? React.createElement("span", { className: "dshsb-tip-desc" },
+                          skill.description.length > 120 ? `${skill.description.slice(0, 117)}…` : skill.description)
+                      : null,
+                  )
+                : null,
               skill
                 ? React.createElement("button", {
                     type: "button",
