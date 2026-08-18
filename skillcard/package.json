@@ -1,6 +1,6 @@
 {
   "name": "dsh-plugin-skillcard",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Wear skill_card_v1 soul, role, and skill seats. Press/authoring is dsh-plugin-skillpress.",
   "type": "module",

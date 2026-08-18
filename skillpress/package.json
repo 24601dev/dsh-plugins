@@ -1,6 +1,6 @@
 {
   "name": "dsh-plugin-skillpress",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Author skill, persona, and role cards, stamp a PNG, plus cards_write for the connected agent",
   "type": "module",

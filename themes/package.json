@@ -1,6 +1,6 @@
 {
   "name": "dsh-plugin-themes",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Custom colour themes with paired light and dark palettes, selectable from General settings",
   "type": "module",
