@@ -190,7 +190,9 @@ Skills are executable modes. Do not put always-on policy here.
 .dshp-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:10px;min-width:0}
 .dshp-gallery-empty{margin:0;padding:18px 8px;text-align:center;color:var(--dsw-alias-label-tertiary);font-size:13px;line-height:19px;border:1px dashed var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-bg-layer-1)}
 .dshp-gallery-empty.over,.dshp-gallery.over{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:2px}
-.dshp-card{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:10px;overflow:hidden;display:flex;flex-direction:column;min-width:0;max-width:100%}
+.dshp-card{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:10px;overflow:hidden;display:flex;flex-direction:column;min-width:0;max-width:100%;cursor:pointer;transition:border-color .12s ease}
+.dshp-card:hover{border-color:var(--dsw-alias-state-business-primary)}
+.dshp-card:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:2px}
 .dshp-card[data-on="1"]{border-color:var(--dsw-alias-state-business-primary);box-shadow:0 0 0 1px var(--dsw-alias-state-business-primary) inset}
 .dshp-card img{width:100%;aspect-ratio:1;object-fit:cover;display:block;background:var(--dsw-alias-bg-layer-1)}
 .dshp-cardbody{padding:8px 10px 10px;display:flex;flex-direction:column;gap:6px;min-width:0}
@@ -807,6 +809,16 @@ Skills are executable modes. Do not put always-on policy here.
                   key: card.name,
                   className: "dshp-card",
                   "data-on": picked === card.name ? "1" : "0",
+                  role: "button",
+                  tabIndex: 0,
+                  title: `Click to load ${card.name} onto the bar.`,
+                  onClick: () => equipCard(card),
+                  onKeyDown: (event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      equipCard(card);
+                    }
+                  },
                 },
                   React.createElement("img", { src: card.url, alt: "" }),
                   React.createElement("div", { className: "dshp-cardbody" },
@@ -817,17 +829,17 @@ Skills are executable modes. Do not put always-on policy here.
                       React.createElement("button", {
                         type: "button",
                         className: "dshp-btn",
-                        onClick: () => equipCard(card),
+                        onClick: (event) => { event.stopPropagation(); equipCard(card); },
                       }, "Load"),
                       React.createElement("button", {
                         type: "button",
                         className: "dshp-btn",
-                        onClick: () => void editCard(card.name).catch((error) => note(String(error.message || error), true)),
+                        onClick: (event) => { event.stopPropagation(); void editCard(card.name).catch((error) => note(String(error.message || error), true)); },
                       }, "Edit"),
                       React.createElement("button", {
                         type: "button",
                         className: "dshp-btn",
-                        onClick: () => void deleteCard(card.name).catch((error) => note(String(error.message || error), true)),
+                        onClick: (event) => { event.stopPropagation(); void deleteCard(card.name).catch((error) => note(String(error.message || error), true)); },
                       }, "Remove"),
                     ),
                   ),
