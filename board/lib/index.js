@@ -64,7 +64,7 @@ async function readJson(req) {
 }
 
 export const name = "plugin-board";
-export const inject = ["webServer"];
+export const inject = ["webServer", "systemPrompt", "tools"];
 
 export function apply(ctx) {
   ctx.systemPrompt.section({
@@ -210,7 +210,7 @@ export function apply(ctx) {
   // server-side, and there is no cross-origin request from the GUI.
   ctx.effect(() => ctx.webServer.register({
     kind: "prefix",
-    path: "/dsh-plugin-board/",
+    path: "/dsh-plugin-board",
     async handler(req, res) {
       try {
         const url = new URL(req.url ?? "/", "http://127.0.0.1");
