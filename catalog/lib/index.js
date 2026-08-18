@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { createHash } from "node:crypto";
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
@@ -6,6 +7,10 @@ import { fileURLToPath } from "node:url";
 
 const TOPIC = "dsh-plugin";
 const SELF = "dsh-plugin-catalog";
+// First-party plugin hub: its mods are listed ahead of GitHub topic results and
+// install from checksummed hub artifacts rather than npm. Overridable for local
+// hub development (e.g. http://127.0.0.1:3100).
+const HUB_URL = (process.env.DSH_PLUGIN_HUB_URL || "https://plugin-hub-khaki.vercel.app").replace(/\/+$/, "");
 // Derived, not hardcoded: this file is checked in and runs on other machines.
 // DSH_HOME is <install>/state, so its parent holds the harness's own node_modules.
 const EXTRA_PATH = [
@@ -92,22 +97,9 @@ function parseGithubSpec(spec) {
   return { owner: match[1], repo: match[2], fullName: `${match[1]}/${match[2]}` };
 }
 
-function hubOrigin() {
-  return (
-    process.env.HUB_URL ||
-    process.env.DSH_HUB_URL ||
-    "https://plugin-hub-khaki.vercel.app"
-  ).replace(/\/$/, "");
-}
-
 function parseHubSpec(spec) {
-  const match = /^hub:dsh\/([A-Za-z0-9_.-]+)$/.exec(String(spec ?? ""));
-  if (!match) return null;
-  return { game: "dsh", slug: match[1], fullName: `dsh/${match[1]}` };
-}
-
-function parseAnySpec(spec) {
-  return parseHubSpec(spec) || parseGithubSpec(spec);
+  const match = /^hub:([A-Za-z0-9][A-Za-z0-9-]*)$/.exec(spec ?? "");
+  return match ? match[1] : null;
 }
 
 function parseVer(raw) {
@@ -259,7 +251,6 @@ async function npmInfo(name) {
 // (schemastery et al) that are NOT in the harness node_modules — so npm, which
 // resolves the whole tree, is the install path. pnpm is absent here; npm is not.
 async function npmInstall(parsed, pkg) {
-  const target = pkg.tarball || `${pkg.name}@${pkg.version}`;
   const result = await run(
     "npm",
     [
@@ -269,11 +260,11 @@ async function npmInstall(parsed, pkg) {
       "--save",
       "--no-audit",
       "--no-fund",
-      target,
+      `${pkg.name}@${pkg.version}`,
     ],
     { cwd: profileDir() },
   );
-  if (!result.ok) return { ...result, method: pkg.tarball ? "hub" : "npm" };
+  if (!result.ok) return { ...result, method: "npm" };
 
   const { path, manifest } = await readManifest();
   manifest.dsh = manifest.dsh ?? {};
@@ -287,7 +278,6 @@ async function npmInstall(parsed, pkg) {
     [parsed.fullName]: {
       package: pkg.name,
       version: pkg.version,
-      hub: Boolean(pkg.tarball),
       harness: await harnessVersion(),
       at: new Date().toISOString(),
     },
@@ -297,12 +287,10 @@ async function npmInstall(parsed, pkg) {
   return {
     ok: true,
     code: 0,
-    method: pkg.tarball ? "hub" : "npm",
+    method: "npm",
     packageName: pkg.name,
     version: pkg.version,
-    stdout: pkg.tarball
-      ? `Installed ${pkg.name}@${pkg.version} from the plugin hub.\n`
-      : `Installed ${pkg.name}@${pkg.version} from npm.\n`,
+    stdout: `Installed ${pkg.name}@${pkg.version} from npm.\n`,
     stderr: "",
   };
 }
@@ -311,89 +299,6 @@ async function fetchJson(url) {
   const response = await fetch(url, { headers: { "User-Agent": "dsh-plugin-catalog" } });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   return JSON.parse(await response.text());
-}
-
-async function hubGet(path) {
-  const data = await fetchJson(`${hubOrigin()}/api/v1${path}`);
-  if (data && data.ok === false) {
-    throw new Error(data.message || data.code || "hub error");
-  }
-  return data;
-}
-
-async function hubArtifact(slug) {
-  const show = await hubGet(`/games/dsh/mods/${slug}?include=files,versions`);
-  const artifact = show.files?.artifacts?.[0];
-  if (!artifact?.url || !show.latest) {
-    throw new Error(`Hub listing dsh/${slug} has no download`);
-  }
-  return {
-    name: show.package || `dsh-plugin-${slug}`,
-    version: show.latest,
-    tarball: artifact.url,
-    sha256: artifact.sha256,
-    isBundle: true,
-    engines: show.engines ?? {},
-    summary: show.summary ?? "",
-    title: show.name ?? slug,
-    categories: show.categories ?? [],
-  };
-}
-
-async function installHub(hub, force) {
-  const pkg = await hubArtifact(hub.slug);
-  return gateInstall({ fullName: hub.fullName, repo: hub.slug }, pkg, force);
-}
-
-async function searchHub(query) {
-  const qs = new URLSearchParams({ limit: "50" });
-  if (query) qs.set("q", query);
-  const payload = await hubGet(`/games/dsh/mods?${qs}`);
-  const installed = await installedNames();
-  const harness = await harnessVersion();
-  const mods = Array.isArray(payload.mods) ? payload.mods : [];
-  const mapped = mods.map((mod) => mapHubMod(mod, installed));
-  const enriched = await mapWithLimit(mapped, 8, (item) =>
-    enrichInstalled(item, installed, harness),
-  );
-  return {
-    total: payload.total ?? mods.length,
-    hub: hubOrigin(),
-    installed: installed.dependencies,
-    harness,
-    updates: enriched.filter((item) => item.updateAvailable).length,
-    items: enriched,
-  };
-}
-
-function mapHubMod(mod, installed) {
-  const fullName = `dsh/${mod.slug}`;
-  const pkg = mod.package || `dsh-plugin-${mod.slug}`;
-  const packageName = resolvePackageName(fullName, pkg, installed);
-  const rec = installed.installs[fullName];
-  return {
-    id: fullName,
-    name: mod.name || fullName,
-    description: mod.summary ?? "",
-    stars: 0,
-    language: "Harness",
-    updatedAt: "",
-    htmlUrl: `${hubOrigin()}/harness/mods/${mod.slug}`,
-    coverUrl: null,
-    topics: Array.isArray(mod.categories) ? mod.categories : [],
-    spec: `hub:${fullName}`,
-    packageName,
-    skillCount: 0,
-    installed: Boolean(packageName),
-    removable: Boolean(packageName) && packageName !== SELF,
-    updatable: Boolean(packageName),
-    harnessAtInstall: rec && typeof rec === "object" ? rec.harness ?? null : null,
-    installedVersion: null,
-    latestVersion: mod.latest ?? null,
-    updateAvailable: false,
-    compat: "ok",
-    compatNote: "",
-  };
 }
 
 // Most repos in the topic are monorepos: the root is not a bundle, but one or
@@ -561,12 +466,9 @@ async function resolveCandidates(parsed) {
 }
 
 async function installSpec(spec, requested, requestedSkills, force = false) {
-  const hub = parseHubSpec(spec);
-  if (hub) return installHub(hub, force);
-
   const parsed = parseGithubSpec(spec);
   if (!parsed) {
-    return { ok: false, code: 400, method: "failed", stdout: "", stderr: "Invalid spec" };
+    return { ok: false, code: 400, method: "failed", stdout: "", stderr: "Invalid github spec" };
   }
 
   // The client picked one package out of a multi-plugin repo.
@@ -650,8 +552,8 @@ function resolvePackageName(fullName, repoName, installed) {
 }
 
 async function uninstallSpec(spec) {
-  const parsed = parseAnySpec(spec);
-  if (!parsed) return { ok: false, code: 400, stdout: "", stderr: "Invalid spec" };
+  const parsed = parseGithubSpec(spec);
+  if (!parsed) return { ok: false, code: 400, stdout: "", stderr: "Invalid github spec" };
 
   const installed = await installedNames();
 
@@ -673,7 +575,7 @@ async function uninstallSpec(spec) {
     };
   }
 
-  const packageName = resolvePackageName(parsed.fullName, parsed.repo || parsed.slug, installed);
+  const packageName = resolvePackageName(parsed.fullName, parsed.repo, installed);
   if (!packageName) {
     return { ok: false, code: 404, stdout: "", stderr: `${parsed.fullName} is not installed` };
   }
@@ -717,39 +619,9 @@ async function uninstallSpec(spec) {
 }
 
 async function updateSpec(spec, requested, force = false) {
-  const hub = parseHubSpec(spec);
-  if (hub) {
-    const installed = await installedNames();
-    const packageName =
-      requested || resolvePackageName(hub.fullName, `dsh-plugin-${hub.slug}`, installed);
-    if (!packageName) {
-      return {
-        ok: false,
-        code: 404,
-        method: "failed",
-        stdout: "",
-        stderr: `${hub.fullName} is not installed`,
-      };
-    }
-    const info = await hubArtifact(hub.slug);
-    const current = await installedPackageVersion(packageName);
-    if (current && cmpVer(current, info.version) >= 0) {
-      return {
-        ok: true,
-        code: 0,
-        method: "noop",
-        packageName,
-        version: current,
-        stdout: `${packageName} is already at ${current}.\n`,
-        stderr: "",
-      };
-    }
-    return gateInstall({ fullName: hub.fullName, repo: hub.slug }, { ...info, name: packageName }, force);
-  }
-
   const parsed = parseGithubSpec(spec);
   if (!parsed) {
-    return { ok: false, code: 400, method: "failed", stdout: "", stderr: "Invalid spec" };
+    return { ok: false, code: 400, method: "failed", stdout: "", stderr: "Invalid github spec" };
   }
 
   const installed = await installedNames();
@@ -807,40 +679,40 @@ async function updateAll(force = false) {
     const packageName = resolveMappedName(rec);
     if (!packageName || packageName === SELF) continue;
 
-    const slug = fullName.startsWith("dsh/") ? fullName.slice(4) : null;
-    if (slug) {
-      let info;
-      try {
-        info = await hubArtifact(slug);
-      } catch (error) {
+    if (fullName.startsWith("hub:")) {
+      const slug = fullName.slice(4);
+      hubDetailCache.delete(slug);
+      const detail = await hubModDetail(slug);
+      if (!detail?.latest) {
+        skipped += 1;
+        results.push({ spec: fullName, packageName, skipped: true, reason: "hub unreachable" });
+        continue;
+      }
+      const currentHub = await installedPackageVersion(packageName);
+      if (currentHub && cmpVer(currentHub, detail.latest) >= 0) {
+        skipped += 1;
+        continue;
+      }
+      const hubCompat = checkCompat({ engines: detail.engines ?? {}, peerDependencies: {} }, harness);
+      if (hubCompat.level !== "ok" && !force) {
         skipped += 1;
         results.push({
-          spec: `hub:dsh/${slug}`,
-          packageName,
-          skipped: true,
-          reason: String(error?.message ?? error),
+          spec: fullName, packageName, skipped: true, compat: hubCompat.level, reason: hubCompat.note,
         });
+        lines.push(`Skipped ${packageName}: ${hubCompat.note}`);
         continue;
       }
-      const current = await installedPackageVersion(packageName);
-      if (current && cmpVer(current, info.version) >= 0) {
-        skipped += 1;
-        continue;
-      }
-      const result = await npmInstall({ fullName, repo: slug }, { ...info, name: packageName });
+      const hubResult = await installHub(slug, true);
       results.push({
-        spec: `hub:dsh/${slug}`,
-        packageName,
-        version: info.version,
-        ok: result.ok,
-        stderr: result.stderr,
+        spec: fullName, packageName, version: detail.latest,
+        ok: hubResult.ok, stderr: hubResult.stderr,
       });
-      if (result.ok) {
+      if (hubResult.ok) {
         updated += 1;
-        lines.push(`Updated ${packageName}@${info.version}`);
+        lines.push(`Updated ${packageName}@${detail.latest} (hub)`);
       } else {
         failed += 1;
-        lines.push(`Failed ${packageName}: ${(result.stderr || "").replace(/\s+/g, " ").slice(0, 200)}`);
+        lines.push(`Failed ${packageName}: ${(hubResult.stderr || "").replace(/\s+/g, " ").slice(0, 200)}`);
       }
       continue;
     }
@@ -1003,12 +875,8 @@ async function enrichInstalled(item, installed, harness) {
   const rec = installed.installs[item.id];
   const recorded = rec && typeof rec === "object" ? rec.version ?? null : null;
   const installedVersion = (await installedPackageVersion(item.packageName)) || recorded || null;
-  let latestVersion = item.latestVersion;
-  let latest = null;
-  if (!parseHubSpec(item.spec)) {
-    latest = await npmInfo(item.packageName);
-    latestVersion = latest?.version ?? latestVersion;
-  }
+  const latest = await npmInfo(item.packageName);
+  const latestVersion = latest?.version ?? null;
   const updateAvailable = Boolean(
     installedVersion && latestVersion && cmpVer(installedVersion, latestVersion) < 0,
   );
@@ -1043,7 +911,259 @@ async function gateInstall(parsed, pkg, force) {
   return { ...result, compat: compat.level, compatNote: compat.note };
 }
 
-async function searchGithub(query) {
+// --- Plugin hub (first-party, priority source) -------------------------------
+
+async function hubApi(path) {
+  try {
+    return await fetchJson(`${HUB_URL}/api/v1${path}`);
+  } catch {
+    return null;
+  }
+}
+
+// Details (package name, engines, artifact) come from the per-mod endpoint;
+// cached per listing pass so install/update don't re-fetch, and cleared at the
+// start of each searchHub so a reload always sees fresh versions.
+const hubDetailCache = new Map();
+
+async function hubModDetail(slug) {
+  if (hubDetailCache.has(slug)) return hubDetailCache.get(slug);
+  const payload = await hubApi(`/games/dsh/mods/${slug}?include=files`);
+  const detail = payload?.ok ? payload : null;
+  hubDetailCache.set(slug, detail);
+  return detail;
+}
+
+async function mapHubMod(mod, installed, harness) {
+  const detail = await hubModDetail(mod.slug);
+  const packageName = detail?.package ?? `dsh-plugin-${mod.slug}`;
+  const key = `hub:${mod.slug}`;
+  const rec = installed.installs[key];
+  const recorded = rec && typeof rec === "object" ? rec.version ?? null : null;
+  const isSelf = packageName === SELF;
+  const installedVersion = (await installedPackageVersion(packageName)) || recorded || null;
+  const isInstalled = Boolean(
+    installedVersion ||
+    installed.dependencies.includes(packageName) ||
+    installed.bundles.includes(packageName)
+  );
+  const latestVersion = mod.latest ?? detail?.latest ?? null;
+  const updateAvailable = Boolean(
+    !isSelf && installedVersion && latestVersion && cmpVer(installedVersion, latestVersion) < 0,
+  );
+  const compat = detail
+    ? checkCompat({ engines: detail.engines ?? {}, peerDependencies: {} }, harness)
+    : { level: "ok", note: "" };
+  return {
+    id: key,
+    name: mod.name ?? mod.slug,
+    description: mod.summary ?? "",
+    stars: 0,
+    language: "",
+    updatedAt: "",
+    htmlUrl: `${HUB_URL}/harness/mods/${mod.slug}`,
+    coverUrl: null,
+    topics: Array.isArray(mod.categories) ? mod.categories : [],
+    spec: key,
+    hub: true,
+    author: mod.author ?? "",
+    packageName,
+    skillCount: 0,
+    installed: isInstalled,
+    removable: isInstalled && !isSelf,
+    updatable: isInstalled && !isSelf,
+    harnessAtInstall: rec && typeof rec === "object" ? rec.harness ?? null : null,
+    installedVersion,
+    latestVersion,
+    updateAvailable,
+    compat: compat.level,
+    compatNote: compat.note,
+  };
+}
+
+async function searchHub(query, installed, harness) {
+  hubDetailCache.clear();
+  const q = `?limit=50${query ? `&q=${encodeURIComponent(query)}` : ""}`;
+  const payload = await hubApi(`/games/dsh/mods${q}`);
+  if (!payload?.ok || !Array.isArray(payload.mods)) return { ok: false, items: [] };
+  const items = await mapWithLimit(payload.mods, 4, (mod) => mapHubMod(mod, installed, harness));
+  return { ok: true, items };
+}
+
+// Hub artifacts are npm tarballs behind a sha256 the hub publishes. Download to
+// a stable cache inside the profile, verify, then hand npm the local file — so
+// a corrupted or swapped blob fails before anything is installed.
+async function downloadHubArtifact(artifact) {
+  const dir = join(profileDir(), ".catalog");
+  await mkdir(dir, { recursive: true });
+  const dest = join(dir, artifact.name);
+  const response = await fetch(artifact.url, { headers: { "User-Agent": "dsh-plugin-catalog" } });
+  if (!response.ok) throw new Error(`Hub artifact fetch failed (HTTP ${response.status})`);
+  const buffer = Buffer.from(await response.arrayBuffer());
+  const digest = createHash("sha256").update(buffer).digest("hex");
+  if (artifact.sha256 && digest !== artifact.sha256) {
+    throw new Error(
+      `Checksum mismatch for ${artifact.name}: hub says ${artifact.sha256}, got ${digest}. Nothing was installed.`,
+    );
+  }
+  await writeFile(dest, buffer);
+  return dest;
+}
+
+async function installHub(slug, force = false) {
+  const detail = await hubModDetail(slug);
+  if (!detail) {
+    return {
+      ok: false, code: 502, method: "failed", stdout: "",
+      stderr: `The hub has no mod dsh/${slug}, or the hub is unreachable.`,
+    };
+  }
+  const artifact = detail.files?.artifacts?.[0];
+  if (!artifact?.url) {
+    return {
+      ok: false, code: 422, method: "rejected", stdout: "",
+      stderr: `dsh/${slug} has no downloadable artifact on the hub yet.`,
+    };
+  }
+  const pkg = {
+    name: detail.package ?? `dsh-plugin-${slug}`,
+    version: detail.latest ?? "0.0.0",
+    engines: detail.engines ?? {},
+    peerDependencies: {},
+  };
+  const harness = await harnessVersion();
+  const compat = checkCompat(pkg, harness);
+  if ((compat.level === "block" || compat.level === "warn") && !force) {
+    return {
+      ok: false, code: 412, method: "compat", compat: compat.level, compatNote: compat.note,
+      packageName: pkg.name, version: pkg.version, stdout: "", stderr: compat.note,
+    };
+  }
+
+  try {
+    await downloadHubArtifact(artifact);
+  } catch (error) {
+    return { ok: false, code: 502, method: "failed", stdout: "", stderr: String(error?.message ?? error) };
+  }
+
+  // Relative to profileDir (the cwd) so the saved dependency spec is portable.
+  const relTarball = `.catalog/${artifact.name}`;
+  const result = await run(
+    "npm",
+    ["install", "--prefix", profileDir(), "--save", "--no-audit", "--no-fund", relTarball],
+    { cwd: profileDir() },
+  );
+  if (!result.ok) return { ...result, method: "npm" };
+
+  const { path, manifest } = await readManifest();
+  manifest.dsh = manifest.dsh ?? {};
+  manifest.dsh.profile = manifest.dsh.profile ?? {};
+  const bundles = Array.isArray(manifest.dsh.profile.bundles) ? manifest.dsh.profile.bundles : [];
+  if (!bundles.includes(pkg.name)) bundles.push(pkg.name);
+  manifest.dsh.profile.bundles = bundles;
+  manifest.dsh.catalog = manifest.dsh.catalog ?? {};
+  manifest.dsh.catalog.installs = {
+    ...manifest.dsh.catalog.installs,
+    [`hub:${slug}`]: {
+      package: pkg.name,
+      version: pkg.version,
+      harness,
+      at: new Date().toISOString(),
+    },
+  };
+  await writeManifest(path, manifest);
+  hubDetailCache.delete(slug);
+
+  return {
+    ok: true, code: 0, method: "hub", packageName: pkg.name, version: pkg.version,
+    compat: compat.level, compatNote: compat.note,
+    stdout: `Installed ${pkg.name}@${pkg.version} from the plugin hub (sha256 verified).\n`,
+    stderr: "",
+  };
+}
+
+// Hub installs are tracked under `hub:<slug>`, but a plugin may have been
+// installed by hand or before hub tracking existed. Fall back to the package
+// the hub says this slug ships, when it is present in the profile.
+async function hubPackageName(slug, installed) {
+  const mapped = resolveMappedName(installed.installs[`hub:${slug}`]);
+  if (mapped) return mapped;
+  const detail = await hubModDetail(slug);
+  const candidate = detail?.package ?? `dsh-plugin-${slug}`;
+  if (installed.dependencies.includes(candidate) || installed.bundles.includes(candidate)) {
+    return candidate;
+  }
+  return null;
+}
+
+async function uninstallHub(slug) {
+  const installed = await installedNames();
+  const packageName = await hubPackageName(slug, installed);
+  if (!packageName) {
+    return { ok: false, code: 404, stdout: "", stderr: `hub:${slug} is not installed` };
+  }
+  if (packageName === SELF) {
+    return {
+      ok: false, code: 400, stdout: "",
+      stderr: "Refusing to remove the catalog plugin itself — that would delete this tab.",
+    };
+  }
+
+  const removed = await run(
+    "npm",
+    ["uninstall", "--prefix", profileDir(), "--no-audit", "--no-fund", packageName],
+    { cwd: profileDir() },
+  );
+
+  const { path, manifest } = await readManifest();
+  if (manifest.dependencies) delete manifest.dependencies[packageName];
+  if (Array.isArray(manifest.dsh?.profile?.bundles)) {
+    manifest.dsh.profile.bundles = manifest.dsh.profile.bundles.filter((b) => b !== packageName);
+  }
+  if (manifest.dsh?.catalog?.installs) delete manifest.dsh.catalog.installs[`hub:${slug}`];
+  await writeManifest(path, manifest);
+
+  await rm(join(profileDir(), "node_modules", packageName), { recursive: true, force: true });
+
+  return {
+    ok: true, code: 0, method: "npm", packageName,
+    stdout: `Removed ${packageName}.\n${removed.ok ? "" : removed.stderr}`,
+    stderr: "",
+  };
+}
+
+async function updateHub(slug, force = false) {
+  const installed = await installedNames();
+  const packageName = await hubPackageName(slug, installed);
+  if (!packageName) {
+    return { ok: false, code: 404, method: "failed", stdout: "", stderr: `hub:${slug} is not installed` };
+  }
+  if (packageName === SELF) {
+    return {
+      ok: false, code: 400, method: "rejected", stdout: "",
+      stderr: "Refusing to update the catalog plugin itself.",
+    };
+  }
+  const detail = await hubModDetail(slug);
+  if (!detail?.latest) {
+    return {
+      ok: false, code: 502, method: "failed", stdout: "",
+      stderr: `The hub has no mod dsh/${slug}, or the hub is unreachable.`,
+    };
+  }
+  const current = await installedPackageVersion(packageName);
+  if (current && cmpVer(current, detail.latest) >= 0) {
+    return {
+      ok: true, code: 0, method: "noop", packageName, version: current,
+      stdout: `${packageName} is already at ${current}.\n`, stderr: "",
+    };
+  }
+  return installHub(slug, force);
+}
+
+// --- GitHub topic (community fallback) ----------------------------------------
+
+async function searchGithub(query, installed, harness) {
   const q = query ? `${query} topic:${TOPIC}` : `topic:${TOPIC}`;
   const url = `https://api.github.com/search/repositories?q=${encodeURIComponent(q)}&sort=stars&order=desc&per_page=50`;
   const response = await fetch(url, {
@@ -1058,11 +1178,9 @@ async function searchGithub(query) {
     throw new Error(`GitHub search failed (${response.status}): ${body.slice(0, 400)}`);
   }
   const payload = await response.json();
-  const installed = await installedNames();
   const rawItems = Array.isArray(payload.items) ? payload.items : [];
   const covers = await mapWithLimit(rawItems, 8, (item) => resolveCover(item.full_name));
   const items = rawItems.map((item, index) => ({ ...item, __cover: covers[index] }));
-  const harness = await harnessVersion();
   const mapped = items.map((item) => mapRepo(item, installed));
   const enriched = await mapWithLimit(mapped, 6, (item) => enrichInstalled(item, installed, harness));
   return {
@@ -1073,6 +1191,22 @@ async function searchGithub(query) {
     harness,
     updates: enriched.filter((item) => item.updateAvailable).length,
     items: enriched,
+  };
+}
+
+// Hub first, GitHub second: first-party mods are checksummed and curated, so
+// they lead the list; the GitHub topic remains as the community long tail. A
+// hub outage never blocks the catalog — it just drops the priority section.
+async function searchAll(query) {
+  const installed = await installedNames();
+  const harness = await harnessVersion();
+  const hub = await searchHub(query, installed, harness);
+  const github = await searchGithub(query, installed, harness);
+  return {
+    ...github,
+    hub: { url: HUB_URL, ok: hub.ok, count: hub.items.length },
+    updates: github.updates + hub.items.filter((item) => item.updateAvailable).length,
+    items: [...hub.items, ...github.items],
   };
 }
 
@@ -1129,7 +1263,7 @@ export function apply(ctx) {
     async handler(req, res) {
       try {
         const url = new URL(req.url ?? "/", "http://127.0.0.1");
-        sendJson(res, 200, await searchHub(url.searchParams.get("q") ?? ""));
+        sendJson(res, 200, await searchAll(url.searchParams.get("q") ?? ""));
       } catch (error) {
         sendJson(res, 502, { error: String(error?.message ?? error) });
       }
@@ -1147,11 +1281,14 @@ export function apply(ctx) {
       try {
         const body = await readJson(req);
         const spec = body.spec;
-        if (!parseAnySpec(spec ?? "")) {
-          sendJson(res, 400, { error: "Install spec must be hub:dsh/slug" });
+        const hubSlug = parseHubSpec(spec);
+        if (!parseGithubSpec(spec ?? "") && !hubSlug) {
+          sendJson(res, 400, { error: "Install spec must be github:owner/repo or hub:slug" });
           return;
         }
-        const result = await installSpec(spec, body.package, body.skills, Boolean(body.force));
+        const result = hubSlug
+          ? await installHub(hubSlug, Boolean(body.force))
+          : await installSpec(spec, body.package, body.skills, Boolean(body.force));
         record("install", body.package ? `${spec} (${body.package})` : spec, result);
         const installed = await installedNames();
         sendJson(res, result.ok ? 200 : result.code || 500, {
@@ -1175,11 +1312,12 @@ export function apply(ctx) {
       try {
         const body = await readJson(req);
         const spec = body.spec;
-        if (!parseAnySpec(spec ?? "")) {
-          sendJson(res, 400, { error: "Uninstall spec must be hub:dsh/slug" });
+        const hubSlug = parseHubSpec(spec);
+        if (!parseGithubSpec(spec ?? "") && !hubSlug) {
+          sendJson(res, 400, { error: "Uninstall spec must be github:owner/repo or hub:slug" });
           return;
         }
-        const result = await uninstallSpec(spec);
+        const result = hubSlug ? await uninstallHub(hubSlug) : await uninstallSpec(spec);
         record("uninstall", spec, result);
         const installed = await installedNames();
         sendJson(res, result.ok ? 200 : result.code, {
@@ -1203,11 +1341,14 @@ export function apply(ctx) {
       try {
         const body = await readJson(req);
         const spec = body.spec;
-        if (!parseAnySpec(spec ?? "")) {
-          sendJson(res, 400, { error: "Update spec must be hub:dsh/slug" });
+        const hubSlug = parseHubSpec(spec);
+        if (!parseGithubSpec(spec ?? "") && !hubSlug) {
+          sendJson(res, 400, { error: "Update spec must be github:owner/repo or hub:slug" });
           return;
         }
-        const result = await updateSpec(spec, body.package, Boolean(body.force));
+        const result = hubSlug
+          ? await updateHub(hubSlug, Boolean(body.force))
+          : await updateSpec(spec, body.package, Boolean(body.force));
         record("update", body.package ? `${spec} (${body.package})` : spec, result);
         const installed = await installedNames();
         sendJson(res, result.ok ? 200 : result.code || 500, {
