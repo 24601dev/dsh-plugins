@@ -1635,7 +1635,8 @@ window.__ModuleLoader__.load({
 .dshsb-slot{position:relative;width:48px;height:48px;padding:0;border-radius:8px;cursor:pointer;overflow:visible;color:var(--dsw-alias-label-secondary);font:inherit;background:var(--dsw-alias-button-tool-bar-fill);border:1px solid var(--dsw-alias-border-l2);box-shadow:inset 0 1px 0 color-mix(in srgb,var(--dsw-alias-label-primary) 8%,transparent);transition:transform .12s ease,box-shadow .12s ease,border-color .12s ease,background-color .12s ease}
 .dshsb-slot:hover{border-color:var(--dsw-alias-state-business-primary);background:var(--dsw-alias-button-tool-bar-hover);transform:translateY(-1px)}
 .dshsb-slot:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:2px}
-.dshsb-slot[data-empty="1"]{cursor:copy}
+.dshsb-slot[data-empty="1"]{cursor:copy;background:transparent;box-shadow:none}
+.dshsb-slot[data-empty="1"]:hover{background:transparent}
 .dshsb-slot[data-over="1"]{border-color:var(--dsw-alias-state-business-primary);box-shadow:0 0 0 2px color-mix(in srgb,var(--dsw-alias-state-business-primary) 45%,transparent),inset 0 0 16px color-mix(in srgb,var(--dsw-alias-state-business-primary) 18%,transparent)}
 .dshsb-slot[data-casting="1"]{border-color:var(--dsw-alias-state-business-primary);animation:dshsb-cast .78s ease-out}
 .dshsb-slot[disabled]{opacity:.55;cursor:default;transform:none}
@@ -1662,6 +1663,14 @@ body>[role="status"]:has(svg[viewBox="0 0 115 84"]){display:none!important}
   .dshsb-slot,.dshsb-unequip{transition:none}
   .dshsb-slot[data-casting="1"],.dshsb-slot[data-casting="1"] .dshsb-halo{animation:none}
 }
+.dshsb-pick{position:fixed;z-index:90;min-width:200px;max-width:260px;max-height:300px;overflow:auto;padding:6px;border-radius:10px;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);box-shadow:var(--dsw-shadow-lv2,0 8px 24px rgba(0,0,0,.24));display:flex;flex-direction:column;gap:2px}
+.dshsb-pick-item{display:flex;align-items:center;gap:8px;padding:6px 8px;border:0;border-radius:6px;background:none;color:var(--dsw-alias-label-primary);font:inherit;font-size:12px;cursor:pointer;text-align:left;min-width:0}
+.dshsb-pick-item:hover{background:var(--dsw-alias-bg-layer-1)}
+.dshsb-pick-item:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:-2px}
+.dshsb-pick-item img{width:24px;height:24px;border-radius:5px;object-fit:cover;flex:none}
+.dshsb-pick-item span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dshsb-pick-empty{margin:0;padding:10px;font-size:12px;color:var(--dsw-alias-label-tertiary)}
+.dshsb-pick-file{margin-top:4px;border-top:1px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-tertiary)}
 `;
 
     if (typeof document !== "undefined") {
@@ -1909,6 +1918,8 @@ body>[role="status"]:has(svg[viewBox="0 0 115 84"]){display:none!important}
       const [over, setOver] = React.useState(null);
       const [casting, setCasting] = React.useState(null);
       const [hint, setHint] = React.useState("");
+      const [picker, setPicker] = React.useState(null);
+      const [pickerCards, setPickerCards] = React.useState([]);
       const dragFrom = React.useRef(null);
       const ignoreClick = React.useRef(false);
       const fileRefs = React.useRef({});
@@ -1983,6 +1994,58 @@ body>[role="status"]:has(svg[viewBox="0 0 115 84"]){display:none!important}
         }
       }, [commit, show, slotsOf]);
 
+      // Empty-slot picker: choose a skill card from the skillpress gallery, or
+      // fall back to the file picker for a PNG on disk. Equipped slots are
+      // untouched — those still cast on click (see the slot onClick below).
+      const openPicker = React.useCallback((kind, index, anchorEl) => {
+        const rect = anchorEl?.getBoundingClientRect?.();
+        const top = rect ? Math.max(8, rect.top - 8 - 240) : Math.max(8, window.innerHeight / 2 - 150);
+        const left = rect
+          ? Math.min(window.innerWidth - 272, Math.max(8, rect.left + rect.width / 2 - 130))
+          : Math.max(8, window.innerWidth / 2 - 130);
+        setPicker({ kind, index, top, left });
+      }, []);
+
+      React.useEffect(() => {
+        if (!picker) return undefined;
+        let cancelled = false;
+        void fetch("/dsh-plugin-skillpress/cards").then(async (res) => {
+          const body = await res.json().catch(() => ({}));
+          if (cancelled) return;
+          const list = Array.isArray(body.cards) ? body.cards : [];
+          setPickerCards(list.filter((card) => !card.kind || card.kind === "skill"));
+        }).catch(() => {
+          if (!cancelled) setPickerCards([]);
+        });
+        const onDoc = (event) => {
+          const node = event.target instanceof Element ? event.target : null;
+          if (node?.closest("[data-dsh-skill-pick]")) return;
+          setPicker(null);
+        };
+        const onKey = (event) => { if (event.key === "Escape") setPicker(null); };
+        window.addEventListener("mousedown", onDoc);
+        window.addEventListener("keydown", onKey);
+        return () => {
+          cancelled = true;
+          window.removeEventListener("mousedown", onDoc);
+          window.removeEventListener("keydown", onKey);
+        };
+      }, [picker?.kind, picker?.index]); // eslint-disable-line react-hooks/exhaustive-deps
+
+      const pickFromGallery = React.useCallback(async (card) => {
+        const target = picker;
+        setPicker(null);
+        if (!target) return;
+        try {
+          const res = await fetch(`/dsh-plugin-skillpress/card?name=${encodeURIComponent(card.name)}`);
+          if (!res.ok) throw new Error("That card is not in the gallery.");
+          const file = new File([await res.blob()], `${card.name}.png`, { type: "image/png" });
+          await equipAt(target.kind, target.index, file);
+        } catch (error) {
+          show(String(error?.message ?? error));
+        }
+      }, [equipAt, picker, show]);
+
       const onPlateDrag = React.useCallback((event) => {
         event.stopPropagation();
         if (event.type === "dragenter" || event.type === "dragover" || event.type === "drop") {
@@ -2025,7 +2088,8 @@ body>[role="status"]:has(svg[viewBox="0 0 115 84"]){display:none!important}
       const cast = React.useCallback(async (kind, index) => {
         const skill = slotsOf(kind)[index];
         if (!skill) {
-          (fileRefs.current[`hud-${kind}-${index}`] || fileRefs.current[`sheet-${kind}-${index}`])?.click();
+          // Keyboard path: no click anchor, so the picker opens centered.
+          openPicker(kind, index, null);
           return;
         }
         if (!inputActions) {
@@ -2118,7 +2182,7 @@ body>[role="status"]:has(svg[viewBox="0 0 115 84"]){display:none!important}
                 disabled: Boolean(skill) && !inputActions,
                 title: skill
                   ? `${skill.name}${skill.description ? ` — ${skill.description}` : ""}\nClick to cast. Right-click to unequip.`
-                  : `Empty slot ${index + 1}. Drop a skill card PNG, or click to pick one.`,
+                  : `Empty slot ${index + 1}. Drop a skill card PNG, or click to pick one from the gallery.`,
                 "aria-label": skill ? `Cast ${skill.name}` : `Load skill on slot ${index + 1}`,
                 draggable: Boolean(skill),
                 onDragStart: (event) => {
@@ -2171,9 +2235,13 @@ body>[role="status"]:has(svg[viewBox="0 0 115 84"]){display:none!important}
                   event.preventDefault();
                   unequip(kind, index);
                 },
-                onClick: () => {
+                onClick: (event) => {
                   if (ignoreClick.current) {
                     ignoreClick.current = false;
+                    return;
+                  }
+                  if (!skill) {
+                    openPicker(kind, index, event.currentTarget);
                     return;
                   }
                   void cast(kind, index);
@@ -2232,6 +2300,42 @@ body>[role="status"]:has(svg[viewBox="0 0 115 84"]){display:none!important}
         React.createElement(LoadoutSkillsPortal, { kit: "role" },
           renderSlots("role", "sheet", false),
         ),
+        picker && typeof document !== "undefined"
+          ? createPortal(
+              React.createElement("div", {
+                className: "dshsb-pick",
+                "data-dsh-skill-pick": "1",
+                role: "listbox",
+                "aria-label": "Pick a skill from the gallery",
+                style: { top: `${picker.top}px`, left: `${picker.left}px` },
+              },
+                pickerCards.length
+                  ? pickerCards.map((card) => React.createElement("button", {
+                      key: card.name,
+                      type: "button",
+                      className: "dshsb-pick-item",
+                      role: "option",
+                      "aria-selected": "false",
+                      onClick: () => void pickFromGallery(card),
+                    },
+                      card.url ? React.createElement("img", { src: card.url, alt: "" }) : null,
+                      React.createElement("span", null, card.name),
+                    ))
+                  : React.createElement("p", { className: "dshsb-pick-empty" }, "No skill cards in the gallery."),
+                React.createElement("button", {
+                  type: "button",
+                  className: "dshsb-pick-item dshsb-pick-file",
+                  onClick: () => {
+                    const target = picker;
+                    setPicker(null);
+                    (fileRefs.current[`hud-${target.kind}-${target.index}`] ||
+                      fileRefs.current[`sheet-${target.kind}-${target.index}`])?.click();
+                  },
+                }, "From file…"),
+              ),
+              document.body,
+            )
+          : null,
       );
     }
 
