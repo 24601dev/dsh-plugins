@@ -26,6 +26,7 @@ window.__ModuleLoader__.load({
 .dshpc-mono{font-size:30px;font-weight:650;color:#fff;line-height:1;user-select:none;text-shadow:0 1px 2px rgba(0,0,0,.25)}
 .dshpc-badge{display:inline-block;margin-left:6px;font-size:10px;line-height:16px;padding:0 6px;border-radius:999px;vertical-align:middle;background:var(--dsw-alias-state-business-primary);color:var(--dsw-alias-bg-layer-1)}
 .dshpc-badge-update{background:var(--dsw-alias-state-warning-primary,#c47d12);color:#fff}
+.dshpc-badge-hub{background:var(--dsw-alias-state-success-primary,#2e7d4f);color:#fff}
 .dshpc-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .dshpc-note{margin:0;font-size:12px;line-height:18px;color:var(--dsw-alias-label-tertiary)}
 .dshpc-warn{color:var(--dsw-alias-state-warning-primary,#c47d12)}
@@ -307,8 +308,10 @@ window.__ModuleLoader__.load({
       return React.createElement("section", { className: "dshpc-root" },
         React.createElement("p", { className: "dshpc-lead" },
           "Plugins from ",
-          React.createElement("a", { href: "https://plugin-hub-khaki.vercel.app/harness", target: "_blank", rel: "noreferrer" }, "Plugin Hub"),
-          ". After Install or Update, restart the GUI.",
+          React.createElement("a", { href: state.data?.hub?.url || "https://plugin-hub-khaki.vercel.app/harness", target: "_blank", rel: "noreferrer" }, "your hub"),
+          " first — checksummed and curated — then community plugins tagged ",
+          React.createElement("a", { href: "https://github.com/topics/dsh-plugin", target: "_blank", rel: "noreferrer" }, "dsh-plugin"),
+          " on GitHub. Updates are opt-in: nothing is upgraded until you click Update. After Install or Update, click the Dock icon to restart.",
         ),
         React.createElement("form", {
           className: "dshpc-search",
@@ -319,7 +322,7 @@ window.__ModuleLoader__.load({
         },
           React.createElement("input", {
             value: query,
-            placeholder: "Search the hub…",
+            placeholder: "Search the topic…",
             onChange: (event) => setQuery(event.target.value),
             // The harness swallows Enter before the form submit fires.
             onKeyDown: (event) => {
@@ -339,14 +342,15 @@ window.__ModuleLoader__.load({
                 onClick: () => {
                   const n = state.data.updates;
                   if (!window.confirm(
-                    `Update ${n} plugin${n === 1 ? "" : "s"} to the latest hub version?\n\n` +
+                    `Update ${n} plugin${n === 1 ? "" : "s"} to the latest npm version?\n\n` +
+                    "Only packages that look compatible with this harness will be updated. " +
                     "Incompatible ones are skipped unless you update them one by one.",
                   )) return;
                   mutateAll(false);
                 },
               }, busy?.kind === "update-all" ? "Updating…" : `Update all (${state.data.updates})`),
               React.createElement("span", { className: "dshpc-note" },
-                `Harness ${state.data.harness || "unknown"}. This catalog plugin is not bulk-updated.`),
+                `Harness ${state.data.harness || "unknown"}. Skills and this catalog plugin are not updated.`),
             )
           : null,
         // Results sit ABOVE the list: below it they are 50 cards off-screen.
@@ -376,9 +380,14 @@ window.__ModuleLoader__.load({
                 : null,
             )
           : null,
-        state.status === "loading" ? React.createElement("p", { className: "dshpc-status" }, "Loading hub…") : null,
+        state.status === "loading" ? React.createElement("p", { className: "dshpc-status" }, "Loading GitHub topic…") : null,
         state.status === "error" ? React.createElement("p", { className: "dshpc-error" }, state.message) : null,
-        state.status === "ready" ? React.createElement("p", { className: "dshpc-status" }, `${state.data.total} plugins`) : null,
+        state.status === "ready"
+          ? React.createElement("p", { className: "dshpc-status" },
+              state.data.hub?.ok
+                ? `${state.data.hub.count} hub plugin${state.data.hub.count === 1 ? "" : "s"} · ${state.data.total} GitHub repositories`
+                : `${state.data.total} GitHub repositories (hub unreachable)`)
+          : null,
         React.createElement("ul", { className: "dshpc-cards" },
           items.map((item) => {
             const tr = translations[item.id];
@@ -396,6 +405,9 @@ window.__ModuleLoader__.load({
                 React.createElement("div", { style: { minWidth: 0 } },
                   React.createElement("h3", { className: "dshpc-title" },
                     React.createElement("a", { href: item.htmlUrl, target: "_blank", rel: "noreferrer" }, item.name),
+                    item.hub
+                      ? React.createElement("span", { className: "dshpc-badge dshpc-badge-hub" }, "hub")
+                      : null,
                     item.installed
                       ? React.createElement("span", { className: "dshpc-badge" },
                           item.skillCount ? `${item.skillCount} skills` : "installed")
@@ -405,13 +417,23 @@ window.__ModuleLoader__.load({
                       : null,
                   ),
                   React.createElement("p", { className: "dshpc-meta" },
-                    [
-                      item.spec?.startsWith("hub:") ? null : (item.stars != null ? `★ ${item.stars.toLocaleString()}` : null),
-                      item.language || null,
-                      item.installedVersion
-                        ? `v${item.installedVersion}${item.latestVersion && item.latestVersion !== item.installedVersion ? ` → ${item.latestVersion}` : ""}`
-                        : item.latestVersion ? `v${item.latestVersion}` : null,
-                    ].filter(Boolean).join(" · "),
+                    (item.hub
+                      ? [
+                          item.author ? `by ${item.author}` : null,
+                          item.installedVersion
+                            ? `v${item.installedVersion}${item.latestVersion && item.latestVersion !== item.installedVersion ? ` → ${item.latestVersion}` : ""}`
+                            : item.latestVersion ? `v${item.latestVersion}` : null,
+                          item.spec,
+                        ]
+                      : [
+                          `★ ${item.stars.toLocaleString()}`,
+                          item.language || "unknown",
+                          item.spec,
+                          item.installedVersion
+                            ? `v${item.installedVersion}${item.latestVersion && item.latestVersion !== item.installedVersion ? ` → ${item.latestVersion}` : ""}`
+                            : null,
+                        ]
+                    ).filter(Boolean).join(" · "),
                   ),
                 ),
                 React.createElement("div", { className: "dshpc-actions" },
