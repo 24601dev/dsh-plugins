@@ -106,6 +106,10 @@ window.__ModuleLoader__.load({
 .dshwear-empty{position:absolute;inset:12%;border:1px dashed var(--dsw-alias-border-l2);border-radius:50%;pointer-events:none;box-sizing:border-box}
 .dshwear-empty:after{content:"";position:absolute;left:50%;top:50%;width:18%;height:18%;margin:0;transform:translate(-50%,-50%);border-radius:50%;border:1px solid color-mix(in srgb,var(--dsw-alias-state-business-primary) 45%,transparent)}
 .dshwear-unequip{position:absolute;top:-4px;right:-4px;z-index:1;width:20px;height:20px;padding:0;border-radius:50%;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);color:var(--dsw-alias-label-primary);font:inherit;font-size:13px;line-height:18px;cursor:pointer;opacity:0;transition:opacity .12s ease}
+.dshwear-cycle{position:absolute;top:50%;transform:translateY(-50%);z-index:1;width:18px;height:18px;padding:0;border-radius:50%;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);color:var(--dsw-alias-label-primary);font:inherit;font-size:12px;line-height:16px;cursor:pointer;opacity:0;transition:opacity .12s ease}
+.dshwear-cycle.prev{left:-8px}
+.dshwear-cycle.next{right:-8px}
+.dshwear-seat:hover .dshwear-cycle,.dshwear-cycle:focus-visible{opacity:1}
 .dshwear-seat:hover .dshwear-unequip,.dshwear-slot:focus-visible + .dshwear-unequip,.dshwear-unequip:focus-visible{opacity:1}
 .dshwear-file{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
 .dshwear-live{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
@@ -805,6 +809,30 @@ window.__ModuleLoader__.load({
           ? `${prettyName(roleWorn.name)}${roleWorn.description ? ` — ${roleWorn.description}` : ""}\nClick for loadout. Right-click or × to remove role.`
           : "Empty loadout. Click to add a soul or role.";
 
+      // Cycle through registered cards of the worn kind with hover arrows.
+      const cycleKind = worn ? "persona" : "role";
+      const cycleName = worn?.name ?? roleWorn?.name ?? null;
+      const [cycleNames, setCycleNames] = React.useState([]);
+      React.useEffect(() => {
+        if (!avatar) { setCycleNames([]); return undefined; }
+        let cancelled = false;
+        void fetch("/dsh-plugin-skillpress/cards").then(async (res) => {
+          const body = await res.json().catch(() => ({}));
+          if (cancelled) return;
+          const list = Array.isArray(body.cards) ? body.cards : [];
+          setCycleNames(list.filter((card) => card.kind === cycleKind).map((card) => card.name));
+        }).catch(() => { if (!cancelled) setCycleNames([]); });
+        return () => { cancelled = true; };
+      }, [avatar, cycleKind, cycleName]);
+
+      const swap = React.useCallback((dir) => {
+        if (cycleNames.length < 2) return;
+        const cur = cycleNames.indexOf(cycleName);
+        const next = cycleNames[(cur < 0 ? 0 : cur + dir + cycleNames.length) % cycleNames.length];
+        const eventName = cycleKind === "role" ? "dsh-roles-wear" : "dsh-persona-wear";
+        window.dispatchEvent(new CustomEvent(eventName, { detail: { name: next } }));
+      }, [cycleKind, cycleName, cycleNames]);
+
       return React.createElement(React.Fragment, null,
       React.createElement(SidebarSoulPortal, { wide },
         React.createElement("div", { className: "dshwear-seat" },
@@ -849,6 +877,24 @@ window.__ModuleLoader__.load({
                   else unequipRole();
                 },
               }, "×")
+            : null,
+          avatar && cycleNames.length > 1
+            ? React.createElement(React.Fragment, null,
+                React.createElement("button", {
+                  type: "button",
+                  className: "dshwear-cycle prev",
+                  "aria-label": `Previous ${cycleKind === "role" ? "role" : "soul"}`,
+                  title: `Previous ${cycleKind === "role" ? "role" : "soul"}`,
+                  onClick: (event) => { event.stopPropagation(); swap(-1); },
+                }, "‹"),
+                React.createElement("button", {
+                  type: "button",
+                  className: "dshwear-cycle next",
+                  "aria-label": `Next ${cycleKind === "role" ? "role" : "soul"} (${cycleNames.length} registered)`,
+                  title: `Next ${cycleKind === "role" ? "role" : "soul"}`,
+                  onClick: (event) => { event.stopPropagation(); swap(1); },
+                }, "›"),
+              )
             : null,
           React.createElement("input", {
             ref: fileRef,
