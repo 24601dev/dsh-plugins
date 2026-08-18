@@ -668,7 +668,7 @@ window.__ModuleLoader__.load({
       const [error, setError] = React.useState("");
       const [selected, setSelected] = React.useState(null);
       const [note, setNote] = React.useState(null);
-      const [view, setView] = React.useState("graph");
+      const [view, setView] = React.useState("files");
 
       const load = React.useCallback(() => {
         setError("");
