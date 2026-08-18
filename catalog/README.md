@@ -2,6 +2,15 @@
 
 Browse plugins from DeepSeek Harness Settings and install them into the current `web` profile. First-party plugins from your plugin hub are listed first (green **hub** badge); community repos from [github.com/topics/dsh-plugin](https://github.com/topics/dsh-plugin) follow.
 
+## Demo mode — master suppression switch
+
+The toggle at the top of the Catalog tab hides every other non-default plugin
+for before/after demos. On: the current `dsh.profile.bundles` list is stashed
+and the profile boots with only this catalog (the switch has to survive, or
+there is no way back). Off: the stash is restored, and anything installed
+while suppressed is kept. Bundles are read at boot, so restart the GUI to
+apply either direction.
+
 ## Plugin hub priority
 
 The catalog queries the hub API (`GET /api/v1/games/dsh/mods`) before the GitHub
