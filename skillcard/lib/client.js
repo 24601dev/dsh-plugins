@@ -1631,7 +1631,7 @@ window.__ModuleLoader__.load({
 .dshsb-kit{display:flex;flex-direction:column;align-items:center;gap:4px}
 .dshsb-kit-label{margin:0;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--dsw-alias-label-tertiary)}
 .dshsb-slots{display:flex;gap:6px;justify-content:center}
-.dshsb-slotwrap{display:flex;flex-direction:column;align-items:center;gap:4px}
+.dshsb-slotwrap{position:relative;display:flex;flex-direction:column;align-items:center;gap:4px}
 .dshsb-slot{position:relative;width:48px;height:48px;padding:0;border-radius:8px;cursor:pointer;overflow:visible;color:var(--dsw-alias-label-secondary);font:inherit;background:var(--dsw-alias-button-tool-bar-fill);border:1px solid var(--dsw-alias-border-l2);box-shadow:inset 0 1px 0 color-mix(in srgb,var(--dsw-alias-label-primary) 8%,transparent);transition:transform .12s ease,box-shadow .12s ease,border-color .12s ease,background-color .12s ease}
 .dshsb-slot:hover{border-color:var(--dsw-alias-state-business-primary);background:var(--dsw-alias-button-tool-bar-hover);transform:translateY(-1px)}
 .dshsb-slot:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:2px}
@@ -1651,7 +1651,6 @@ window.__ModuleLoader__.load({
 .dshsb-slotwrap:hover .dshsb-tip,.dshsb-slot:focus-visible ~ .dshsb-tip{opacity:1;transform:translate(-50%,0)}
 .dshsb-tip-name{font-size:12px;font-weight:600;color:var(--dsw-alias-label-primary);line-height:16px}
 .dshsb-tip-desc{font-size:11px;line-height:15px;color:var(--dsw-alias-label-tertiary);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.dshsb-tip:after{content:"";position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:var(--dsw-alias-border-l2)}
 .dshsb-slot[data-casting="1"] .dshsb-halo{opacity:1;background:conic-gradient(from 0deg,var(--dsw-alias-state-business-primary),transparent 28%,var(--dsw-alias-state-business-primary) 52%,transparent 78%,var(--dsw-alias-state-business-primary));filter:blur(1px);animation:dshsb-spin .78s linear}
 .dshsb-live{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
 .dshsb-file{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
