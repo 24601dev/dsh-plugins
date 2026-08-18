@@ -5,7 +5,7 @@ window.__ModuleLoader__.load({
     const React = require("react");
 
     const css = `
-.dshbd-root{display:flex;flex-direction:column;gap:12px;width:100%;max-width:760px;color:var(--dsw-alias-label-primary)}
+.dshbd-root{display:flex;flex-direction:column;gap:12px;width:100%;max-width:760px;box-sizing:border-box;padding:16px 18px 20px;color:var(--dsw-alias-label-primary)}
 .dshbd-lead{margin:0;color:var(--dsw-alias-label-tertiary);font-size:13px;line-height:20px}
 .dshbd-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .dshbd-bar select,.dshbd-bar input{height:32px;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);border-radius:8px;padding:0 10px;font:inherit;font-size:12px}
