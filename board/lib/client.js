@@ -147,10 +147,10 @@ window.__ModuleLoader__.load({
 
     const inject = ["slots"];
     function apply(ctx) {
-      ctx.slots.inject("settings.plugins.tab", () => ctx.slots.register({
-        name: "settings.plugins.tab",
+      ctx.slots.inject("conversation.view", () => ctx.slots.register({
+        name: "conversation.view",
         id: "board",
-        order: 25,
+        order: 27,
         label: () => "Board",
       }, BoardTab));
     }
