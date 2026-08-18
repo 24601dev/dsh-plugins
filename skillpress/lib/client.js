@@ -154,6 +154,7 @@ Skills are executable modes. Do not put always-on policy here.
 .dshp-root{display:flex;flex-direction:column;gap:12px;width:100%;max-width:100%;min-width:0;min-height:0;height:100%;padding:16px 18px 20px;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary);overflow:hidden}
 .dshp-lead{margin:0;max-width:100%;font-size:13px;line-height:20px;color:var(--dsw-alias-label-tertiary);flex:none}
 .dshp-scroll{flex:1 1 auto;min-height:0;min-width:0;overflow:auto;display:flex;flex-direction:column;gap:12px}
+.dshp-scroll>*{flex:none}
 .dshp-bed{display:grid;grid-template-columns:minmax(0,280px) minmax(0,1fr);gap:14px;min-width:0;width:100%}
 .dshp-platen{display:flex;flex-direction:column;gap:8px;min-width:0;max-width:100%;overflow:hidden;padding:12px;border:1px solid var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-bg-layer-2)}
 .dshp-platen h2{margin:0;font:inherit;font-size:14px;font-weight:600;color:var(--dsw-alias-label-primary)}
