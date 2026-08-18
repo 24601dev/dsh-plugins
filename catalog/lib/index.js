@@ -1211,7 +1211,9 @@ async function demoState() {
     return {
       suppressed: Array.isArray(stash),
       active: bundles,
-      hidden: Array.isArray(stash) ? stash.filter((b) => b !== SELF) : [],
+      hidden: Array.isArray(stash)
+        ? stash.filter((b) => b !== SELF && !b.startsWith("@deepseek-ai/"))
+        : [],
     };
   } catch {
     return { suppressed: false, active: [], hidden: [] };
@@ -1228,9 +1230,11 @@ async function setDemoMode(on) {
 
   if (on && !Array.isArray(stash)) {
     manifest.dsh.catalog.demoStash = current;
-    manifest.dsh.profile.bundles = [SELF];
+    // Keep the harness's own base bundles (they gate the shell stacks) and this
+    // catalog (the switch must survive, or there is no way back).
+    manifest.dsh.profile.bundles = current.filter((b) => b.startsWith("@deepseek-ai/") || b === SELF);
     await writeManifest(path, manifest);
-    return { suppressed: true, hidden: current.filter((b) => b !== SELF), restart: true };
+    return { suppressed: true, hidden: current.filter((b) => !b.startsWith("@deepseek-ai/") && b !== SELF), restart: true };
   }
   if (!on && Array.isArray(stash)) {
     // Plugins installed while suppressed are kept — merge them into the restore.
