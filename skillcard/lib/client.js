@@ -2110,8 +2110,8 @@ body>[role="status"]:has(svg[viewBox="0 0 115 84"]){display:none!important}
             await new Promise((resolve) => window.setTimeout(resolve, WATCH_MS));
           }
           inputActions.setDraft(`/${skill.name}`);
-          inputActions.submit();
-          show(`Cast ${skill.name}.`);
+          // No auto-submit: the user reviews the loaded command and hits send.
+          show(`Loaded ${skill.name} into the composer — hit send when ready.`);
         } catch (error) {
           show(String(error?.message ?? error));
         }
@@ -2181,7 +2181,7 @@ body>[role="status"]:has(svg[viewBox="0 0 115 84"]){display:none!important}
                 "data-casting": casting === `${kind}:${index}` ? "1" : "0",
                 disabled: Boolean(skill) && !inputActions,
                 title: skill
-                  ? `${skill.name}${skill.description ? ` — ${skill.description}` : ""}\nClick to cast. Right-click to unequip.`
+                  ? `${skill.name}${skill.description ? ` — ${skill.description}` : ""}\nClick to load into the composer. Right-click to unequip.`
                   : `Empty slot ${index + 1}. Drop a skill card PNG, or click to pick one from the gallery.`,
                 "aria-label": skill ? `Cast ${skill.name}` : `Load skill on slot ${index + 1}`,
                 draggable: Boolean(skill),
