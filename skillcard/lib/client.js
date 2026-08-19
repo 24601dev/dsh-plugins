@@ -80,6 +80,91 @@ window.__ModuleLoader__.load({
       return roster.agents.find((row) => row.id === roster.activeId) || roster.agents[0];
     }
 
+    // Per-session wear memory: changing soul/role inside a session sticks to
+    // that session. Switching back (or returning later) re-applies what was
+    // worn there. Sessions without a record keep the current global wear.
+    const WEAR_SESSIONS_KEY = "dsh-plugin-wear:sessions";
+    const CURRENT_SESSION_KEY = "dsh.sessions.current";
+
+    function currentSessionId() {
+      try {
+        return JSON.parse(localStorage.getItem(CURRENT_SESSION_KEY) || "null")?.sessionId ?? null;
+      } catch {
+        return null;
+      }
+    }
+
+    function wearSessions() {
+      try {
+        return JSON.parse(localStorage.getItem(WEAR_SESSIONS_KEY) || "{}");
+      } catch {
+        return {};
+      }
+    }
+
+    function snapshotWearForSession() {
+      const sid = currentSessionId();
+      if (!sid) return;
+      const map = wearSessions();
+      map[sid] = {
+        soul: readWornJson("dsh-plugin-persona:worn")?.name ?? null,
+        role: readWornJson("dsh-plugin-roles:worn")?.name ?? null,
+        at: Date.now(),
+      };
+      try {
+        localStorage.setItem(WEAR_SESSIONS_KEY, JSON.stringify(map));
+      } catch { /* storage full — wear memory just stops growing */ }
+    }
+
+    function restoreWearForSession(sid) {
+      const entry = wearSessions()[sid];
+      if (!entry) return;
+      const soul = readWornJson("dsh-plugin-persona:worn")?.name ?? null;
+      const role = readWornJson("dsh-plugin-roles:worn")?.name ?? null;
+      const wear = (api, name) => {
+        // Name-only re-wear: the host rebuilds from its stored folder, so this
+        // works even when the card is not in the gallery.
+        return fetch(`${api}/wear`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ name }),
+        }).then(async (res) => {
+          if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `${res.status}`);
+        });
+      };
+      if ((entry.soul ?? null) !== soul) {
+        const apply = entry.soul
+          ? wear("/dsh-plugin-persona", entry.soul)
+          : fetch("/dsh-plugin-persona/unequip", { method: "POST" });
+        void apply.then(() => {
+          window.dispatchEvent(new CustomEvent("dsh-persona-changed", { detail: { name: entry.soul ?? null } }));
+        }).catch(() => {});
+      }
+      if ((entry.role ?? null) !== role) {
+        const apply = entry.role
+          ? wear("/dsh-plugin-roles", entry.role)
+          : fetch("/dsh-plugin-roles/unequip", { method: "POST" });
+        void apply.then(() => {
+          window.dispatchEvent(new CustomEvent("dsh-roles-changed", { detail: { name: entry.role ?? null } }));
+        }).catch(() => {});
+      }
+    }
+
+    if (typeof window !== "undefined" && !window.__dshWearSessionsInit) {
+      window.__dshWearSessionsInit = true;
+      window.addEventListener("dsh-persona-changed", snapshotWearForSession);
+      window.addEventListener("dsh-roles-changed", snapshotWearForSession);
+      let lastSid = currentSessionId();
+      // Page reload: re-apply whatever the current session was wearing.
+      if (lastSid) restoreWearForSession(lastSid);
+      window.setInterval(() => {
+        const sid = currentSessionId();
+        if (!sid || sid === lastSid) return;
+        lastSid = sid;
+        restoreWearForSession(sid);
+      }, 1000);
+    }
+
     function typingAway(target) {
       if (!target || !(target instanceof Element)) return false;
       const tag = target.tagName;
