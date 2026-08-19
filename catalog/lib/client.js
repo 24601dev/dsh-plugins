@@ -87,6 +87,229 @@ window.__ModuleLoader__.load({
       return (cleaned.match(/[A-Za-z0-9]/)?.[0] ?? "?").toUpperCase();
     }
 
+    // --- Demo curtain (instant, no restart) ------------------------------------
+    // Demo mode is pure client-side visual suppression: it hides other plugins'
+    // rendered roots and disables their injected CSS, so the bare default UI can
+    // be compared against the dressed one WITHOUT restarting the GUI. It is not an
+    // unload — plugin JS keeps running — but for a UI before/after that is fine.
+    //
+    // Two levers, both reversible by removing one style tag and one class:
+    //  1. Plugin-injected <style> tags are attributable by data-dyn="<pluginId>"
+    //     or data-plugin-css; we disable exactly the known community plugins'
+    //     tags, never the harness's and never ours.
+    //  2. A curtain stylesheet hides community plugin roots by class rule. The
+    //     rule is dynamic: hide any "dsh"-containing token, keep the harness
+    //     "dsh-" tokens and the catalog's "dshpc" tokens — so a new plugin prefix
+    //     (e.g. dshrs-) is caught without editing a list.
+    const CURTAIN_STYLE_ID = "dshpc-demo-curtain";
+    const EXIT_PILL_ID = "dshpc-demo-exit";
+
+    // Exact style-tag owners (data-dyn / data-plugin-css values) for the
+    // community plugins in this deployment. Harness tags carry @deepseek-ai/*
+    // ids and are never matched here; our own tag is data-plugin-css="dsh-plugin-catalog".
+    const PLUGIN_STYLE_OWNERS = new Set([
+      "dsh-plugin-board",
+      "dsh-plugin-chat-density",
+      "dsh-plugin-skillcard",
+      "dsh-plugin-skillpress",
+      "dsh-plugin-themes",
+      "dsh-plugin-vault",
+    ]);
+
+    // Hide rule (dynamic, self-maintaining): community plugin classes are
+    // "dsh<letters>-…" (dsh followed by a LETTER). Harness classes are
+    // "dsh-<word>-…" (dsh followed by a DASH) and the catalog is "dshpc-…".
+    // So the selector hides any token containing "dsh", then explicitly keeps
+    // the harness "dsh-" tokens and the catalog's "dshpc" tokens visible. A new
+    // plugin prefix is caught automatically — no per-plugin list to maintain.
+    function curtainCss() {
+      const hide = `[class*="dsh"]`;
+      // Allow-list: anything where "dsh" is immediately followed by a dash is a
+      // harness token (dsh-bash-, dsh-tool-, …). The catalog's own dshpc- tokens
+      // are kept so the switch and its card stay reachable.
+      const keepHarness = `[class*="dsh-"]`;
+      const keepCatalog = `[class*="dshpc"]`;
+      const selectors =
+        `${hide}:not(${keepHarness}):not(${keepCatalog})`;
+      return (
+        `${selectors}{display:none !important;}` +
+        `#${EXIT_PILL_ID}{position:fixed;right:18px;bottom:18px;z-index:2147483646;` +
+        `border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);` +
+        `color:var(--dsw-alias-label-primary);border-radius:999px;padding:8px 14px;` +
+        `font: inherit;font-size:12px;cursor:pointer;box-shadow:var(--dsw-shadow-lv1,0 2px 10px rgba(0,0,0,.25));}` +
+        `#${EXIT_PILL_ID}:hover{background:var(--dsw-alias-interactive-bg-hover);}`
+      );
+    }
+
+    // Attribution attributes community plugins use on their <style> tags.
+    // data-dyn (board/vault/skillcard/etc.), data-plugin-css (catalog + others),
+    // and data-dsh-style (themes). Only the catalog's own tag is protected.
+    const STYLE_ATTRS = ["data-dyn", "data-plugin-css", "data-dsh-style"];
+
+    function setPluginStylesDisabled(disabled) {
+      const selector = STYLE_ATTRS.map((a) => `style[${a}]`).join(",");
+      const tags = document.querySelectorAll(selector);
+      for (const tag of tags) {
+        // data-dsh-style is the themes plugin's attribution attribute (no harness
+        // code uses it), so any tag carrying it is plugin-owned and safe to flip.
+        let owner = tag.dataset.dshStyle;
+        if (owner === undefined) {
+          owner = tag.dataset.dyn ?? tag.dataset.pluginCss ?? "";
+          // Harness tags carry @deepseek-ai/* ids; our own catalog tag carries
+          // data-plugin-css="dsh-plugin-catalog". Those must survive demo mode.
+          if (owner.startsWith("@deepseek-ai/") || owner === "dsh-plugin-catalog") continue;
+        }
+        if (disabled) {
+          if (tag.dataset.dshpcWasMedia === undefined) tag.dataset.dshpcWasMedia = tag.media || "";
+          tag.media = "none";
+        } else if (tag.dataset.dshpcWasMedia !== undefined) {
+          tag.media = tag.dataset.dshpcWasMedia;
+          delete tag.dataset.dshpcWasMedia;
+        }
+      }
+    }
+
+    function removeExitPill() {
+      document.getElementById(EXIT_PILL_ID)?.remove();
+    }
+
+    function showExitPill() {
+      if (document.getElementById(EXIT_PILL_ID)) return;
+      const pill = document.createElement("button");
+      pill.id = EXIT_PILL_ID;
+      pill.type = "button";
+      pill.textContent = "Exit demo mode";
+      pill.addEventListener("click", () => void setDemoMode(false));
+      document.body.appendChild(pill);
+    }
+
+    // Single source of truth for the client side of a flip. Idempotent.
+    function applyDemoCurtain(on) {
+      let tag = document.getElementById(CURTAIN_STYLE_ID);
+      if (on) {
+        if (!tag) {
+          tag = document.createElement("style");
+          tag.id = CURTAIN_STYLE_ID;
+          document.head.appendChild(tag);
+        }
+        tag.textContent = curtainCss();
+        setPluginStylesDisabled(true);
+        showExitPill();
+      } else {
+        tag?.remove();
+        setPluginStylesDisabled(false);
+        removeExitPill();
+      }
+    }
+
+    // Flip both sides: persist the flag on the server, then apply the curtain
+    // locally right away. The server flag only matters across a page refresh.
+    async function setDemoMode(on) {
+      applyDemoCurtain(on);
+      try {
+        const response = await fetch("/dsh-plugin-catalog/demo-mode", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ on }),
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
+        return result;
+      } catch (error) {
+        // The curtain is already applied; a persist failure only means the state
+        // won't survive a refresh. Surface it but don't roll back the visual.
+        return { error: String(error?.message ?? error) };
+      }
+    }
+
+    // Demo mode lives in the main Settings → Plugins modal (the Configurable
+    // tab) as a card, not buried in the Catalog tab — the whole point is a
+    // before/after switch you can reach without first loading the catalog.
+    function DemoModeCard() {
+      const [demo, setDemo] = React.useState(null);
+      const [busy, setBusy] = React.useState(false);
+      const [note, setNote] = React.useState(null);
+
+      const refresh = React.useCallback(async () => {
+        try {
+          const response = await fetch("/dsh-plugin-catalog/demo-mode");
+          const payload = await response.json();
+          if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
+          setDemo(payload);
+          // Re-assert the curtain on load: if the flag was persisted on, a page
+          // refresh should come back up still suppressed.
+          applyDemoCurtain(Boolean(payload.suppressed));
+        } catch (error) {
+          setNote({ kind: "error", text: String(error?.message ?? error) });
+        }
+      }, []);
+
+      React.useEffect(() => {
+        refresh();
+      }, [refresh]);
+
+      async function toggle(on) {
+        setBusy(true);
+        setNote(null);
+        // Apply the visual change immediately — that is the whole point.
+        applyDemoCurtain(on);
+        setDemo((prev) => ({ ...(prev ?? {}), suppressed: on }));
+        const result = await setDemoMode(on);
+        setBusy(false);
+        if (result?.error) {
+          setNote({
+            kind: "error",
+            text: `Applied, but the state was not saved (it won't survive a refresh): ${result.error}`,
+          });
+          return;
+        }
+        const n = (on ? result?.hidden?.length : result?.restored?.length) ?? 0;
+        setNote({
+          kind: "notice",
+          text: on
+            ? `Demo mode on — ${n} plugin${n === 1 ? "" : "s"} hidden. Use the floating button (bottom-right) or this switch to exit.`
+            : `Demo mode off — everything is back.`,
+        });
+      }
+
+      return React.createElement("li", { className: "dshpc-card" },
+        React.createElement("div", { className: "dshpc-inner" },
+          React.createElement("div", { className: "dshpc-head" },
+            React.createElement("div", { style: { minWidth: 0 } },
+              React.createElement("h3", { className: "dshpc-title" }, "Demo mode"),
+              React.createElement("p", { className: "dshpc-meta" },
+                "Hide every non-default plugin for an instant before/after UI " +
+                "comparison — no restart. A floating “Exit demo mode” button " +
+                "appears at the bottom-right so there is always a way back."),
+            ),
+            React.createElement("div", { className: "dshpc-actions" },
+              React.createElement("label", {
+                className: "dshpc-note",
+                style: { display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer" },
+              },
+                React.createElement("input", {
+                  type: "checkbox",
+                  checked: Boolean(demo?.suppressed),
+                  disabled: busy || demo === null,
+                  onChange: (event) => void toggle(event.target.checked),
+                }),
+                demo?.suppressed ? "On" : "Off",
+              ),
+            ),
+          ),
+          demo?.suppressed
+            ? React.createElement("p", { className: "dshpc-note" },
+                `${demo.hidden?.length ?? 0} hidden. Flip off or use the floating button to bring everything back.`)
+            : null,
+          note
+            ? React.createElement("p", {
+                className: note.kind === "error" ? "dshpc-error" : "dshpc-note",
+              }, note.text)
+            : null,
+        ),
+      );
+    }
+
     function CatalogTab() {
       const [query, setQuery] = React.useState("");
       const [state, setState] = React.useState({ status: "loading" });
@@ -303,30 +526,7 @@ window.__ModuleLoader__.load({
         }
       }
 
-      async function toggleDemo(on) {
-        setLog(null);
-        try {
-          const response = await fetch("/dsh-plugin-catalog/demo-mode", {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ on }),
-          });
-          const result = await response.json();
-          if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
-          setLog({
-            kind: "notice",
-            text: on
-              ? `Demo mode on — ${result.hidden?.length ?? 0} plugin${(result.hidden?.length ?? 0) === 1 ? "" : "s"} will be hidden. Restart the GUI (Dock icon) to see the bare interface.`
-              : `Demo mode off — ${result.restored?.length ?? 0} plugin${(result.restored?.length ?? 0) === 1 ? "" : "s"} restored. Restart the GUI (Dock icon) to load them.`,
-          });
-          await load(query);
-        } catch (error) {
-          setLog({ kind: "error", text: String(error?.message ?? error) });
-        }
-      }
-
       const items = state.data?.items ?? [];
-      const demo = state.data?.demo;
 
       return React.createElement("section", { className: "dshpc-root" },
         React.createElement("p", { className: "dshpc-lead" },
@@ -336,26 +536,6 @@ window.__ModuleLoader__.load({
           React.createElement("a", { href: "https://github.com/topics/dsh-plugin", target: "_blank", rel: "noreferrer" }, "dsh-plugin"),
           " on GitHub. Updates are opt-in: nothing is upgraded until you click Update. After Install or Update, click the Dock icon to restart.",
         ),
-        state.status === "ready"
-          ? React.createElement("div", { className: "dshpc-toolbar" },
-              React.createElement("label", {
-                className: "dshpc-note",
-                style: { display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer" },
-              },
-                React.createElement("input", {
-                  type: "checkbox",
-                  checked: Boolean(demo?.suppressed),
-                  disabled: Boolean(busy),
-                  onChange: (event) => void toggleDemo(event.target.checked),
-                }),
-                "Demo mode — hide all other plugins",
-              ),
-              demo?.suppressed
-                ? React.createElement("span", { className: "dshpc-note" },
-                    `${demo.hidden.length} hidden. Only this catalog loads — flip off to bring everything back.`)
-                : null,
-            )
-          : null,
         React.createElement("form", {
           className: "dshpc-search",
           onSubmit: (event) => {
@@ -534,6 +714,14 @@ window.__ModuleLoader__.load({
 
     const inject = ["slots"];
     function apply(ctx) {
+      // The toggle card goes first in the main (Configurable) tab — order -10
+      // puts it above the built-in bash (0), agent-loop (10) and web-search
+      // (20) cards.
+      ctx.slots.inject("settings.plugin.item", () => ctx.slots.register({
+        name: "settings.plugin.item",
+        id: "demo-mode",
+        order: -10,
+      }, DemoModeCard));
       ctx.slots.inject("settings.plugins.tab", () => ctx.slots.register({
         name: "settings.plugins.tab",
         id: "catalog",
