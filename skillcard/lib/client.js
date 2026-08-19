@@ -611,24 +611,31 @@ window.__ModuleLoader__.load({
 
       React.useEffect(() => {
         let cancelled = false;
-        void fetch(`${API}/worn`).then(async (res) => {
-          const body = await res.json().catch(() => ({}));
-          if (cancelled) return;
-          const name = body.name || null;
-          if (!name) {
-            setWorn(null);
-            saveLocal(null);
-            return;
-          }
-          setWorn((cur) => {
-            const next = cur && cur.name === name
-              ? { ...cur, description: body.description || cur.description }
-              : { name, description: body.description || "", thumb: cur?.name === name ? cur.thumb : null };
-            saveLocal(next);
-            return next;
-          });
-        }).catch(() => { /* host not ready */ });
-        return () => { cancelled = true; };
+        const syncWorn = () => {
+          void fetch(`${API}/worn`).then(async (res) => {
+            const body = await res.json().catch(() => ({}));
+            if (cancelled) return;
+            const name = body.name || null;
+            if (!name) {
+              setWorn(null);
+              saveLocal(null);
+              return;
+            }
+            setWorn((cur) => {
+              const next = cur && cur.name === name
+                ? { ...cur, description: body.description || cur.description }
+                : { name, description: body.description || "", thumb: cur?.name === name ? cur.thumb : null };
+              saveLocal(next);
+              return next;
+            });
+          }).catch(() => { /* host not ready */ });
+        };
+        syncWorn();
+        window.addEventListener("dsh-persona-changed", syncWorn);
+        return () => {
+          cancelled = true;
+          window.removeEventListener("dsh-persona-changed", syncWorn);
+        };
       }, []);
 
       React.useEffect(() => {
@@ -1511,24 +1518,31 @@ window.__ModuleLoader__.load({
 
       React.useEffect(() => {
         let cancelled = false;
-        void fetch(`${API}/worn`).then(async (res) => {
-          const body = await res.json().catch(() => ({}));
-          if (cancelled) return;
-          const name = body.name || null;
-          if (!name) {
-            setWorn(null);
-            saveLocal(null);
-            return;
-          }
-          setWorn((cur) => {
-            const next = cur && cur.name === name
-              ? { ...cur, description: body.description || cur.description }
-              : { name, description: body.description || "", thumb: cur?.name === name ? cur.thumb : null };
-            saveLocal(next);
-            return next;
-          });
-        }).catch(() => { /* host not ready */ });
-        return () => { cancelled = true; };
+        const syncWorn = () => {
+          void fetch(`${API}/worn`).then(async (res) => {
+            const body = await res.json().catch(() => ({}));
+            if (cancelled) return;
+            const name = body.name || null;
+            if (!name) {
+              setWorn(null);
+              saveLocal(null);
+              return;
+            }
+            setWorn((cur) => {
+              const next = cur && cur.name === name
+                ? { ...cur, description: body.description || cur.description }
+                : { name, description: body.description || "", thumb: cur?.name === name ? cur.thumb : null };
+              saveLocal(next);
+              return next;
+            });
+          }).catch(() => { /* host not ready */ });
+        };
+        syncWorn();
+        window.addEventListener("dsh-roles-changed", syncWorn);
+        return () => {
+          cancelled = true;
+          window.removeEventListener("dsh-roles-changed", syncWorn);
+        };
       }, []);
 
       React.useEffect(() => {
