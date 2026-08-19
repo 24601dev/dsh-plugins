@@ -3,7 +3,7 @@
  * inject it as an always-on system-prompt section. Does not install into the
  * skill catalog — wearing is not slash-casting.
  */
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 const NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
@@ -153,8 +153,13 @@ export function apply(ctx) {
 
   const wear = async (name, description, files) => {
     const id = safeName(name);
-    const text = composeText(id, files);
-    const path = await writeFiles(id, files);
+    // Re-wear without re-uploading: the folder from the last wear is still on
+    // disk, so { name } alone is enough. Needed for per-session wear restore,
+    // where the card may not be in the gallery at all.
+    let payload = files;
+    if (!payload) payload = await readStoredFiles(id);
+    const text = composeText(id, payload);
+    const path = await writeFiles(id, payload);
     worn.name = id;
     worn.description = typeof description === "string" ? description : "";
     worn.text = text;
@@ -162,6 +167,29 @@ export function apply(ctx) {
     notifyPrompt();
     return { ok: true, name: id, path };
   };
+
+  async function readStoredFiles(id) {
+    const root = join(homeRoot(), id);
+    const files = {};
+    const walk = async (dir, prefix) => {
+      const entries = await readdir(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
+        if (entry.isDirectory()) {
+          await walk(join(dir, entry.name), rel);
+        } else if (entry.isFile()) {
+          files[rel] = { content: await readFile(join(dir, entry.name), "utf8"), encoding: "utf-8" };
+        }
+      }
+    };
+    try {
+      await walk(root, "");
+    } catch {
+      throw new Error(`${id} was never worn here — no stored files to re-wear`);
+    }
+    if (!Object.keys(files).length) throw new Error(`${id} has no stored files`);
+    return files;
+  }
 
   const unequip = async () => {
     worn.name = "";
