@@ -995,7 +995,7 @@ window.__ModuleLoader__.load({
             },
           }),
           React.createElement("div", { className: "dshwear-live", role: "status", "aria-live": "polite" }, hint),
-          worn
+          worn || roleWorn
             ? React.createElement("div", { "data-dsh-role-chip": "1" })
             : null,
         ),
@@ -1629,20 +1629,6 @@ window.__ModuleLoader__.load({
         return () => window.removeEventListener("dsh-roles-unequip", onUnequip);
       }, [unequip]);
 
-      const [soulWorn, setSoulWorn] = React.useState(() => {
-        try {
-          const parsed = JSON.parse(localStorage.getItem("dsh-plugin-persona:worn") || "null");
-          return Boolean(parsed && parsed.name);
-        } catch {
-          return false;
-        }
-      });
-      React.useEffect(() => {
-        const sync = (event) => setSoulWorn(Boolean(event.detail?.name));
-        window.addEventListener("dsh-persona-changed", sync);
-        return () => window.removeEventListener("dsh-persona-changed", sync);
-      }, []);
-
       const onDrag = React.useCallback((event) => {
         event.stopPropagation();
         if (event.type === "dragenter" || event.type === "dragover" || event.type === "drop") {
@@ -1723,7 +1709,7 @@ window.__ModuleLoader__.load({
         )
           : null,
       ),
-      soulWorn && worn
+      worn
         ? React.createElement(SidebarChipPortal, null,
             React.createElement(RoleChip, {
               worn,
