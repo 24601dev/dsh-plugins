@@ -28,6 +28,8 @@
     "lib/client.js",
     "lib/arasaka-mark.svg",
     "lib/arasaka-icon.png",
+    "lib/militech-mark.png",
+    "lib/militech-wordmark.png",
     "cordis.patch.yml"
   ]
 }
