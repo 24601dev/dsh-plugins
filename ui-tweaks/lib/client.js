@@ -54,7 +54,14 @@ window.__ModuleLoader__.load({
       cog.setAttribute("aria-label", "Settings");
       cog.innerHTML = COG_SVG;
       cog.addEventListener("click", () => {
+        // The settingsArea is hidden by CSS (display:none), and the harness
+        // rejects clicks on display-none elements. Lift the rule for the
+        // click, restore it right after.
+        const tag = document.querySelector('style[data-plugin-css="dsh-plugin-ui-tweaks"]');
+        const original = tag?.textContent ?? "";
+        if (tag) tag.textContent = original.replace(".hHd-Xa_settingsArea{display:none !important}", "");
         document.querySelector(".VOzbGW_trigger")?.click();
+        if (tag) window.setTimeout(() => { tag.textContent = original; }, 60);
       });
       utils.appendChild(cog);
     }
