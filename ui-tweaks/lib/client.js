@@ -10,8 +10,8 @@ window.__ModuleLoader__.load({
     //    .dshp-foot), not a hashed module name, so this stays correct across
     //    their rebuilds.
     // 2. Session log becomes an icon-only square button (document glyph).
-    // 3. A Settings cog joins it in the header utilities row (the sidebar
-    //    entry stays too).
+    // 3. A Settings cog joins it in the header utilities row, and the padded
+    //    sidebar entry is hidden.
     const LOG_ICON =
       "data:image/svg+xml," + encodeURIComponent(
         `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="#9aa0ae" stroke-width="1.4" stroke-linecap="round"><rect x="3" y="2" width="10" height="12" rx="1.5"/><path d="M5.5 5.5h5M5.5 8h5M5.5 10.5h3"/></svg>`,
@@ -21,6 +21,7 @@ window.__ModuleLoader__.load({
 .nL4_yW_sessionLogButton{width:32px !important;min-width:0 !important;max-width:32px !important;height:32px;padding:0 !important;gap:0 !important;font-size:0 !important;border-radius:8px}
 .nL4_yW_sessionLogButton svg{display:none}
 .nL4_yW_sessionLogButton::before{content:"";width:16px;height:16px;background:currentColor;-webkit-mask:url("${LOG_ICON}") center/contain no-repeat;mask:url("${LOG_ICON}") center/contain no-repeat}
+.hHd-Xa_settingsArea{display:none !important}
 .dshut-icon-btn{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;padding:0;border:1px solid var(--dsw-alias-border-l2);border-radius:8px;background:var(--dsw-alias-bg-layer-3);color:var(--dsw-alias-label-secondary);cursor:pointer;font:inherit}
 .dshut-icon-btn:hover{color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-state-business-primary)}
 `;
