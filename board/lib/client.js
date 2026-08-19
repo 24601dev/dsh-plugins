@@ -22,6 +22,10 @@ window.__ModuleLoader__.load({
 .dshbd-compose{display:flex;gap:6px}
 .dshbd-compose input[type=text]{flex:1;height:36px;box-sizing:border-box;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);border-radius:8px;padding:0 12px;font:inherit;font-size:13px;min-width:0}
 .dshbd-compose .dshbd-who{flex:0 0 110px}
+.dshbd-tobottom{position:absolute;right:14px;bottom:14px;width:30px;height:30px;padding:0;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);color:var(--dsw-alias-label-secondary);border-radius:50%;font:inherit;font-size:14px;line-height:1;cursor:pointer;z-index:40;opacity:1;transition:opacity .12s ease;box-shadow:var(--dsw-shadow-lv2,0 4px 16px rgba(0,0,0,.22))}
+.dshbd-tobottom:hover{color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-state-business-primary)}
+.dshbd-tobottom[data-hidden="1"]{opacity:0;pointer-events:none}
+.dshbd-wrap{position:relative;flex:1;min-height:0;display:flex;flex-direction:column}
 `;
 
     if (typeof document !== "undefined" && !document.querySelector('style[data-plugin-css="dsh-plugin-board"]')) {
@@ -33,6 +37,19 @@ window.__ModuleLoader__.load({
 
     const POLL_MS = 8000;
 
+    // The host scrolls the conversation view; the button lives as a child of
+    // that container, anchored to its viewport, so it stays put while content
+    // moves.
+    function scrollHostOf(node) {
+      let el = node;
+      while (el && el !== document.body) {
+        const cs = getComputedStyle(el);
+        if (cs.overflowY === "auto" || cs.overflowY === "scroll") return el;
+        el = el.parentElement;
+      }
+      return null;
+    }
+
     function BoardTab() {
       const [channels, setChannels] = React.useState([]);
       const [channel, setChannel] = React.useState("general");
@@ -41,6 +58,9 @@ window.__ModuleLoader__.load({
       const [draft, setDraft] = React.useState("");
       const [author, setAuthor] = React.useState("me");
       const latestRef = React.useRef(0);
+      const rootRef = React.useRef(null);
+      const scrollRef = React.useRef(null);
+      const hostRef = React.useRef(null);
 
       const load = React.useCallback(async (ch, full) => {
         try {
@@ -72,6 +92,40 @@ window.__ModuleLoader__.load({
         }).catch(() => {});
       }, [messages.length]);
 
+      React.useEffect(() => {
+        // Polling resolves the root not yet bound at mount: rootRef.current is
+        // null at that point, so look it up directly.
+        const resolved = rootRef.current ?? document.querySelector(".dshbd-root");
+        const host = resolved ? scrollHostOf(resolved) : null;
+        scrollRef.current = host;
+        hostRef.current = host;
+        if (!host) {
+          console.warn("[dsh-plugin-board] no scroll host; to-bottom button disabled");
+          return undefined;
+        }
+        host.style.position = "relative";
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "dshbd-tobottom";
+        btn.title = "Scroll to bottom";
+        btn.setAttribute("aria-label", "Scroll to latest messages");
+        btn.textContent = "↓";
+        btn.addEventListener("click", () => {
+          host.scrollTo({ top: host.scrollHeight, behavior: "smooth" });
+        });
+        host.appendChild(btn);
+        const onScroll = () => {
+          const far = host.scrollTop + host.clientHeight < host.scrollHeight - 120;
+          btn.dataset.hidden = far ? "0" : "1";
+        };
+        host.addEventListener("scroll", onScroll);
+        onScroll();
+        return () => {
+          host.removeEventListener("scroll", onScroll);
+          btn.remove();
+        };
+      }, []);
+
       async function send() {
         const text = draft.trim();
         if (!text) return;
@@ -90,7 +144,7 @@ window.__ModuleLoader__.load({
         }
       }
 
-      return React.createElement("section", { className: "dshbd-root" },
+      return React.createElement("section", { className: "dshbd-root", ref: rootRef },
         React.createElement("p", { className: "dshbd-lead" },
           "Shared board for agents on other machines (codex, claude over SSH). They poll this over HTTPS; agents here use the board_read / board_post tools. Refreshes every 8s.",
         ),
@@ -114,14 +168,16 @@ window.__ModuleLoader__.load({
           React.createElement("button", { type: "button", onClick: () => void load(channel, true) }, "Refresh"),
         ),
         error ? React.createElement("p", { className: "dshbd-error" }, error) : null,
-        React.createElement("ul", { className: "dshbd-msgs" },
-          messages.map((m) => React.createElement("li", { key: m.id, className: "dshbd-msg" },
-            React.createElement("p", { className: "dshbd-meta" },
-              React.createElement("strong", null, m.author),
-              ` · ${new Date(m.ts).toLocaleString()}${m.tags?.length ? ` · ${m.tags.join(", ")}` : ""}`,
-            ),
-            React.createElement("p", { className: "dshbd-body" }, m.body),
-          )),
+        React.createElement("div", { className: "dshbd-wrap" },
+          React.createElement("ul", { className: "dshbd-msgs" },
+            messages.map((m) => React.createElement("li", { key: m.id, className: "dshbd-msg" },
+              React.createElement("p", { className: "dshbd-meta" },
+                React.createElement("strong", null, m.author),
+                ` · ${new Date(m.ts).toLocaleString()}${m.tags?.length ? ` · ${m.tags.join(", ")}` : ""}`,
+              ),
+              React.createElement("p", { className: "dshbd-body" }, m.body),
+            )),
+          ),
         ),
         messages.length === 0 && !error
           ? React.createElement("p", { className: "dshbd-note" }, "Nothing on this channel yet.")
