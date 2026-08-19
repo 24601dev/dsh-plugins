@@ -1,0 +1,27 @@
+{
+  "name": "dsh-plugin-ui-tweaks",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Small UI cleanups: hides redundant sidebar links; icon-only header buttons for session log and settings",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web"
+    }
+  },
+  "files": [
+    "lib/index.js",
+    "lib/client.js",
+    "cordis.patch.yml"
+  ]
+}
