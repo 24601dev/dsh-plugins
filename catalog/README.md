@@ -2,14 +2,44 @@
 
 Browse plugins from DeepSeek Harness Settings and install them into the current `web` profile. First-party plugins from your plugin hub are listed first (green **hub** badge); community repos from [github.com/topics/dsh-plugin](https://github.com/topics/dsh-plugin) follow.
 
-## Demo mode — master suppression switch
+## Demo mode — instant curtain (no restart)
 
-The toggle at the top of the Catalog tab hides every other non-default plugin
-for before/after demos. On: the current `dsh.profile.bundles` list is stashed
-and the profile boots with only this catalog (the switch has to survive, or
-there is no way back). Off: the stash is restored, and anything installed
-while suppressed is kept. Bundles are read at boot, so restart the GUI to
-apply either direction.
+The toggle lives in the main Settings → Plugins modal, as the first card of
+the Configurable tab. It hides every other community plugin **instantly**, so
+you can compare the bare default UI against the dressed one without restarting
+the GUI. A floating **“Exit demo mode”** button appears at the bottom-right
+while it is on, so there is always a way back even if the path to Settings is
+itself hidden.
+
+This is **visual suppression, not an unload.** The slot system gives a plugin
+no runtime API to remove another plugin's rendered React output, so the
+curtain does the two things that *are* attributable and reversible:
+
+1. **Disables each community plugin's injected `<style>` tag** — they carry
+   `data-dyn="<pluginId>"` / `data-plugin-css`, matched against an exact
+   allow-list of plugin ids. Harness tags and this catalog's own tag are never
+   touched.
+2. **Hides each community plugin's rendered roots** by a dynamic class rule.
+   Community plugin classes are `dsh<letters>-…` (dsh followed by a LETTER):
+   `dshbd-`, `dshp-`, `dshrs-`, … Harness classes are `dsh-<word>-…` (dsh
+   followed by a DASH): `dsh-bash-`, `dsh-tool-`, … and this catalog is
+   `dshpc-…`. So the curtain hides `[class*="dsh"]` while keeping `[class*="dsh-"]`
+   (harness) and `[class*="dshpc"]` (the switch) visible. A new plugin prefix is
+   caught automatically — there is no per-plugin list to maintain.
+
+The on/off flag is persisted server-side (`dsh.catalog.demoOn`) only so a page
+refresh comes back in the same state; it never gates the bundle list.
+
+**Limits.** Plugin JS keeps running in the background (fetch loops,
+subscriptions), so this is a *visual* before/after, not a performance one. The
+hide rule relies on the `dsh<letters>`-vs-`dsh-` convention; a plugin that
+ignores it (no `dsh` class prefix at all) would not be hidden.
+
+> History: v1 matched class *substrings* and ate harness UI. v2 used a
+> whole-token prefix list that had to be hand-maintained — and it kept
+> breaking because a missing prefix (e.g. `dshrs`) left a plugin visible while
+> others vanished. v3 (current) uses the dynamic letter-vs-dash rule above, so
+> it maintains itself.
 
 ## Plugin hub priority
 
