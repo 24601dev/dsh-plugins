@@ -619,6 +619,37 @@ window.__ModuleLoader__.load({
         }
       }
 
+      // [[target|alias]] — match the graph's resolver so any link that exists
+      // as an id, rel tail, or title keeps landing on its note.
+      function resolveNote(link) {
+        const key = String(link).replace(/\.md$/i, "").toLowerCase();
+        const nodes = graph?.nodes ?? [];
+        return nodes.find((n) => n.id.toLowerCase() === key)
+          || nodes.find((n) => n.id.toLowerCase().endsWith(`/${key}`))
+          || nodes.find((n) => (n.title || "").toLowerCase() === key);
+      }
+
+      function followAtCaret(event) {
+        if (!(event.metaKey || event.ctrlKey)) return;
+        event.preventDefault();
+        const ta = event.currentTarget;
+        const pos = ta.selectionStart;
+        const src = ta.value;
+        const re = /\[\[([^\]]+)\]\]/g;
+        let match;
+        while ((match = re.exec(src))) {
+          if (pos < match.index || pos > match.index + match[0].length) continue;
+          const link = match[1].split("|")[0].trim();
+          const target = resolveNote(link);
+          if (target) {
+            void pick(target);
+          } else {
+            setStatus(`No note named ${link}.`);
+          }
+          return;
+        }
+      }
+
       if (!graph || !graph.nodes?.length) {
         return React.createElement("div", { className: "dshv-edempty" },
           error || "Set a vault folder in Settings → Vault, then open this tab again.");
@@ -636,7 +667,7 @@ window.__ModuleLoader__.load({
             ? React.createElement(React.Fragment, null,
                 React.createElement("div", { className: "dshv-edhead" },
                   React.createElement("span", { className: "dshv-edtitle" }, openNote.rel || openNote.id),
-                  React.createElement("span", { className: "dshv-edstate" }, status || (dirty ? "Unsaved changes" : "")),
+                  React.createElement("span", { className: "dshv-edstate" }, status || (dirty ? "Unsaved changes" : "⌘-click a [[link]] to follow it")),
                   React.createElement("button", {
                     type: "button",
                     className: "dshv-edsave",
@@ -650,6 +681,7 @@ window.__ModuleLoader__.load({
                   spellCheck: false,
                   "aria-label": `Edit ${openNote.id}`,
                   onChange: (event) => { setText(event.target.value); setDirty(true); setStatus(""); },
+                  onClick: (event) => { if (event.metaKey || event.ctrlKey) followAtCaret(event); },
                   onKeyDown: (event) => {
                     if ((event.metaKey || event.ctrlKey) && event.key === "s") {
                       event.preventDefault();
