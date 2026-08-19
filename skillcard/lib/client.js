@@ -870,11 +870,11 @@ window.__ModuleLoader__.load({
             stepAgent(delta);
             return;
           }
+          // Closed sheet: plain arrows swap too — as long as we are not stealing
+          // the cursor's home inside a text field. typingAway guards that.
           if (typingAway(event.target)) return;
-          if (event.altKey && !event.metaKey && !event.ctrlKey) {
-            event.preventDefault();
-            stepAgent(delta);
-          }
+          event.preventDefault();
+          stepAgent(delta);
         };
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
