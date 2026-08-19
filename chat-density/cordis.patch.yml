@@ -1,0 +1,4 @@
+# One row: the client override is the whole plugin.
+- insert:
+    - id: plugin-chat-density
+      name: dsh-plugin-chat-density
