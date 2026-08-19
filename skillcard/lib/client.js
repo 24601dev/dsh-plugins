@@ -638,9 +638,13 @@ window.__ModuleLoader__.load({
         };
         syncWorn();
         window.addEventListener("dsh-persona-changed", syncWorn);
+        // The agent can switch wear autonomously via the host API, which fires
+        // no client event. Poll so the seat reflects any path to a change.
+        const timer = window.setInterval(syncWorn, 4000);
         return () => {
           cancelled = true;
           window.removeEventListener("dsh-persona-changed", syncWorn);
+          window.clearInterval(timer);
         };
       }, []);
 
@@ -1554,9 +1558,13 @@ window.__ModuleLoader__.load({
         };
         syncWorn();
         window.addEventListener("dsh-roles-changed", syncWorn);
+        // The agent can switch wear autonomously via the host API, which fires
+        // no client event. Poll so the seat reflects any path to a change.
+        const timer = window.setInterval(syncWorn, 4000);
         return () => {
           cancelled = true;
           window.removeEventListener("dsh-roles-changed", syncWorn);
+          window.clearInterval(timer);
         };
       }, []);
 
