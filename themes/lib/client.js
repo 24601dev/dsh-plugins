@@ -461,6 +461,7 @@ window.__ModuleLoader__.load({
         fill;
       return `
 ${sel} [class*="sidebarCol"],${sel} [class*="detailsCol"],${sel} [class*="header"],${sel} button{letter-spacing:.06em}
+${sel} [class*="sidebarCol"]{font-size:12px}
 ${sel} *,${sel} *::before,${sel} *::after{border-radius:0!important}
 ${sel} [class*="spinner" i],${sel} [class*="Spinner"]{border-radius:50%!important}
 ${sel} ::selection{background:rgba(196,16,40,.42);color:#fff}
