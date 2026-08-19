@@ -1,0 +1,4 @@
+# One row: the client override is the whole plugin.
+- insert:
+    - id: plugin-ui-tweaks
+      name: dsh-plugin-ui-tweaks
