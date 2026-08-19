@@ -22,7 +22,6 @@ window.__ModuleLoader__.load({
 .nL4_yW_sessionLogButton:hover{color:var(--dsw-alias-label-primary) !important}
 .nL4_yW_sessionLogButton svg{display:none}
 .nL4_yW_sessionLogButton::before{content:"";width:16px;height:16px;background:currentColor;-webkit-mask:url("${LOG_ICON}") center/contain no-repeat;mask:url("${LOG_ICON}") center/contain no-repeat}
-.hHd-Xa_settingsArea{display:none !important}
 .dshut-icon-btn{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;padding:0;border:1px solid var(--dsw-alias-border-l2);border-radius:8px;background:var(--dsw-alias-bg-layer-3);color:var(--dsw-alias-label-secondary);cursor:pointer;font:inherit}
 .dshut-icon-btn:hover{color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-state-business-primary)}
 `;
@@ -54,14 +53,28 @@ window.__ModuleLoader__.load({
       cog.setAttribute("aria-label", "Settings");
       cog.innerHTML = COG_SVG;
       cog.addEventListener("click", () => {
-        // The settingsArea is hidden by CSS (display:none), and the harness
-        // rejects clicks on display-none elements. Lift the rule for the
-        // click, restore it right after.
+        // Lift the settingsArea hide long enough for the modal to open, then
+        // restore the rule only after the dialog actually closes. Restoring
+        // on a timer would close it again.
         const tag = document.querySelector('style[data-plugin-css="dsh-plugin-ui-tweaks"]');
         const original = tag?.textContent ?? "";
         if (tag) tag.textContent = original.replace(".hHd-Xa_settingsArea{display:none !important}", "");
+        let seenDialog = false;
+        const observer = new MutationObserver(() => {
+          const dialog = document.querySelector("[role='dialog']");
+          if (dialog) seenDialog = true;
+          else if (seenDialog) {
+            if (tag) tag.textContent = original;
+            observer.disconnect();
+          }
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
         document.querySelector(".VOzbGW_trigger")?.click();
-        if (tag) window.setTimeout(() => { tag.textContent = original; }, 60);
+        // Safety: if no dialog ever mounts, restore after 1s so the rule still works next time.
+        window.setTimeout(() => {
+          if (!seenDialog && tag) tag.textContent = original;
+          observer.disconnect();
+        }, 1000);
       });
       utils.appendChild(cog);
     }
