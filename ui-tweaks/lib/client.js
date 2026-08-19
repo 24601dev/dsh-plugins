@@ -18,7 +18,8 @@ window.__ModuleLoader__.load({
       );
     const css = `
 .dshv-foot,.dshp-foot{display:none !important}
-.nL4_yW_sessionLogButton{width:32px !important;min-width:0 !important;max-width:32px !important;height:32px;padding:0 !important;gap:0 !important;font-size:0 !important;border-radius:8px}
+.nL4_yW_sessionLogButton{width:32px !important;min-width:0 !important;max-width:32px !important;height:32px;padding:0 !important;gap:0 !important;font-size:0 !important;border-radius:8px;color:var(--dsw-alias-label-secondary) !important}
+.nL4_yW_sessionLogButton:hover{color:var(--dsw-alias-label-primary) !important}
 .nL4_yW_sessionLogButton svg{display:none}
 .nL4_yW_sessionLogButton::before{content:"";width:16px;height:16px;background:currentColor;-webkit-mask:url("${LOG_ICON}") center/contain no-repeat;mask:url("${LOG_ICON}") center/contain no-repeat}
 .hHd-Xa_settingsArea{display:none !important}
