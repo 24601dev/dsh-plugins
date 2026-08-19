@@ -863,13 +863,14 @@ window.__ModuleLoader__.load({
             return;
           }
           if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
-          if (typingAway(event.target)) return;
           const delta = event.key === "ArrowLeft" ? -1 : 1;
+          // Sheet-first: no text inputs live in the loadout, so nothing to protect.
           if (sheet) {
             event.preventDefault();
             stepAgent(delta);
             return;
           }
+          if (typingAway(event.target)) return;
           if (event.altKey && !event.metaKey && !event.ctrlKey) {
             event.preventDefault();
             stepAgent(delta);
