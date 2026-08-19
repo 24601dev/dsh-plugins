@@ -187,8 +187,12 @@ window.__ModuleLoader__.load({
 .dshwear-slot[data-empty="1"]{cursor:copy;background:transparent}
 .dshwear-slot[data-over="1"]{border-color:var(--dsw-alias-state-business-primary);box-shadow:0 0 0 2px color-mix(in srgb,var(--dsw-alias-state-business-primary) 45%,transparent)}
 .dshwear-slot[data-busy="1"]{opacity:.7}
-.dshwear-face{width:100%;height:100%;object-fit:cover;display:block;border-radius:50%;pointer-events:none;animation:dshwear-swap .26s ease-out}
-@keyframes dshwear-swap{from{opacity:0;transform:scale(.88) rotate(-4deg)}to{opacity:1;transform:scale(1) rotate(0)}}
+.dshwear-face{width:100%;height:100%;object-fit:cover;display:block;border-radius:50%;pointer-events:none;animation:dshwear-swap .3s ease-out}
+@keyframes dshwear-swap{from{opacity:0;transform:translateY(6px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
+.dshwear-face.dshwear-from-left{animation:dshwear-slide-left .3s ease-out}
+.dshwear-face.dshwear-from-right{animation:dshwear-slide-right .3s ease-out}
+@keyframes dshwear-slide-left{from{opacity:0;transform:translateX(-16px)}to{opacity:1;transform:translateX(0)}}
+@keyframes dshwear-slide-right{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}
 .dshwear-empty{position:absolute;inset:12%;border:1px dashed var(--dsw-alias-border-l2);border-radius:50%;pointer-events:none;box-sizing:border-box}
 .dshwear-empty:after{content:"";position:absolute;left:50%;top:50%;width:18%;height:18%;margin:0;transform:translate(-50%,-50%);border-radius:50%;border:1px solid color-mix(in srgb,var(--dsw-alias-state-business-primary) 45%,transparent)}
 .dshwear-unequip{position:absolute;top:-4px;right:-4px;z-index:1;width:20px;height:20px;padding:0;border-radius:50%;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);color:var(--dsw-alias-label-primary);font:inherit;font-size:13px;line-height:18px;cursor:pointer;opacity:0;transition:opacity .12s ease}
@@ -919,8 +923,11 @@ window.__ModuleLoader__.load({
         return () => { cancelled = true; };
       }, [avatar, cycleKind, cycleName]);
 
+      const [swapDir, setSwapDir] = React.useState("none");
+
       const swap = React.useCallback((dir) => {
         if (cycleNames.length < 2) return;
+        setSwapDir(dir < 0 ? "left" : "right");
         const cur = cycleNames.indexOf(cycleName);
         const next = cycleNames[(cur < 0 ? 0 : cur + dir + cycleNames.length) % cycleNames.length];
         const eventName = cycleKind === "role" ? "dsh-roles-wear" : "dsh-persona-wear";
@@ -957,8 +964,8 @@ window.__ModuleLoader__.load({
           },
             avatarSrc
               ? React.createElement("img", {
-                  key: worn?.name || roleWorn?.name || "empty",
-                  className: "dshwear-face",
+                  key: `${worn?.name || roleWorn?.name || "empty"}:${swapDir}`,
+                  className: `dshwear-face${swapDir === "left" ? " dshwear-from-left" : swapDir === "right" ? " dshwear-from-right" : ""}`,
                   src: avatarSrc,
                   alt: "",
                 })
