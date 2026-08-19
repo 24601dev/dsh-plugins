@@ -1197,22 +1197,23 @@ async function searchGithub(query, installed, harness) {
 // Hub first, GitHub second: first-party mods are checksummed and curated, so
 // they lead the list; the GitHub topic remains as the community long tail. A
 // hub outage never blocks the catalog — it just drops the priority section.
-// --- Demo mode (master suppression switch) ------------------------------------
-// Stashes the profile's bundle list and boots with only this catalog plugin,
-// so the interface can be shown with and without community plugins. The
-// catalog must stay loaded or there is no switch left to turn it back off.
-// Bundles are read at boot, so a restart applies the change.
+// --- Demo mode (instant runtime curtain) --------------------------------------
+// Demo mode is a CLIENT-SIDE visual suppression: the catalog hides every other
+// plugin's rendered output and injected CSS at runtime, so the interface can be
+// compared with and without community plugins WITHOUT a restart. The server only
+// persists the on/off flag (dsh.catalog.demoOn) so a page refresh keeps the
+// state — it never touches the bundle list, so nothing is gated at boot.
 
 async function demoState() {
   try {
     const { manifest } = await readManifest();
     const bundles = manifest.dsh?.profile?.bundles ?? [];
-    const stash = manifest.dsh?.catalog?.demoStash;
+    const on = manifest.dsh?.catalog?.demoOn === true;
     return {
-      suppressed: Array.isArray(stash),
+      suppressed: on,
       active: bundles,
-      hidden: Array.isArray(stash)
-        ? stash.filter((b) => b !== SELF && !b.startsWith("@deepseek-ai/"))
+      hidden: on
+        ? bundles.filter((b) => b !== SELF && !b.startsWith("@deepseek-ai/"))
         : [],
     };
   } catch {
@@ -1223,28 +1224,23 @@ async function demoState() {
 async function setDemoMode(on) {
   const { path, manifest } = await readManifest();
   manifest.dsh = manifest.dsh ?? {};
-  manifest.dsh.profile = manifest.dsh.profile ?? {};
   manifest.dsh.catalog = manifest.dsh.catalog ?? {};
-  const current = Array.isArray(manifest.dsh.profile.bundles) ? manifest.dsh.profile.bundles : [];
-  const stash = manifest.dsh.catalog.demoStash;
+  const current = Array.isArray(manifest.dsh.profile?.bundles) ? manifest.dsh.profile.bundles : [];
+  const was = manifest.dsh.catalog.demoOn === true;
 
-  if (on && !Array.isArray(stash)) {
-    manifest.dsh.catalog.demoStash = current;
-    // Keep the harness's own base bundles (they gate the shell stacks) and this
-    // catalog (the switch must survive, or there is no way back).
-    manifest.dsh.profile.bundles = current.filter((b) => b.startsWith("@deepseek-ai/") || b === SELF);
-    await writeManifest(path, manifest);
-    return { suppressed: true, hidden: current.filter((b) => !b.startsWith("@deepseek-ai/") && b !== SELF), restart: true };
+  if (on === was) {
+    return { suppressed: was, noop: true };
   }
-  if (!on && Array.isArray(stash)) {
-    // Plugins installed while suppressed are kept — merge them into the restore.
-    const merged = [...stash, ...current.filter((b) => b !== SELF && !stash.includes(b))];
-    manifest.dsh.profile.bundles = merged;
-    delete manifest.dsh.catalog.demoStash;
-    await writeManifest(path, manifest);
-    return { suppressed: false, restored: merged, restart: true };
+  if (on) {
+    manifest.dsh.catalog.demoOn = true;
+  } else {
+    delete manifest.dsh.catalog.demoOn;
   }
-  return { suppressed: Array.isArray(stash), noop: true };
+  await writeManifest(path, manifest);
+  const hidden = current.filter((b) => !b.startsWith("@deepseek-ai/") && b !== SELF);
+  return on
+    ? { suppressed: true, hidden }
+    : { suppressed: false, restored: hidden };
 }
 
 async function searchAll(query) {
