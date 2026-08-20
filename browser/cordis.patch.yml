@@ -1,0 +1,4 @@
+# Shared Chrome tab: live view in the GUI, browser_* tools for the agent
+- insert:
+    - id: plugin-browser
+      name: dsh-plugin-browser

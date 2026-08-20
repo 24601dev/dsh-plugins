@@ -1,8 +1,8 @@
 {
   "name": "dsh-plugin-ui-tweaks",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "private": true,
-  "description": "Small UI cleanups: hides redundant sidebar links; icon-only header buttons for session log and settings",
+  "description": "Plugin list origin, descriptions, and enable/disable; header settings cog",
   "type": "module",
   "main": "lib/index.js",
   "exports": {

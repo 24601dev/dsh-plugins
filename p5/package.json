@@ -1,8 +1,8 @@
 {
-  "name": "dsh-plugin-skillcard",
-  "version": "0.1.1",
+  "name": "dsh-plugin-p5",
+  "version": "0.1.0",
   "private": true,
-  "description": "Wear skill_card_v1 soul, role, and skill seats. Press/authoring is dsh-plugin-skillpress.",
+  "description": "Persona 5 skin: original marks and print chrome, not a palette card in the shared theme picker",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
@@ -18,20 +18,15 @@
     "client": {
       "inject": [
         "@deepseek-ai/dsh-client-runtime",
-        "@deepseek-ai/dsh-client-ui-settings",
-        "@deepseek-ai/dsh-client-ui-slots",
-        "@deepseek-ai/dsh-client-ui-sidebar"
+        "@deepseek-ai/dsh-client-ui-settings"
       ],
       "platform": "web"
     }
   },
   "files": [
     "lib/index.js",
-    "lib/config.js",
-    "lib/soul.js",
-    "lib/role.js",
-    "lib/skill.js",
     "lib/client.js",
+    "assets",
     "cordis.patch.yml"
   ]
 }

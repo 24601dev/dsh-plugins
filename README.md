@@ -6,11 +6,18 @@ This is the author source. The Plugin Hub hosts download artifacts; do not treat
 
 | Folder | Package | What |
 |---|---|---|
+| `board` | `dsh-plugin-board` | Shared agent message board |
+| `browser` | `dsh-plugin-browser` | Chrome tab the user and agent share |
+| `catalog` | `dsh-plugin-catalog` | Hub + GitHub-topic plugin browser |
+| `chat-density` | `dsh-plugin-chat-density` | Compact chat layout |
+| `p5` | `dsh-plugin-p5` | Persona 5 skin |
+| `resend` | `dsh-plugin-resend` | Resend / regenerate from a session fork |
 | `skillcard` | `dsh-plugin-skillcard` | Wear soul, role, and skill seats |
 | `skillpress` | `dsh-plugin-skillpress` | Author and stamp cards |
-| `vault` | `dsh-plugin-vault` | Obsidian vault graph + search tools |
 | `themes` | `dsh-plugin-themes` | Paired light/dark colour themes |
-| `catalog` | `dsh-plugin-catalog` | Legacy GitHub-topic browser |
+| `ui-tweaks` | `dsh-plugin-ui-tweaks` | Plugin list and header chrome tweaks |
+| `vault` | `dsh-plugin-vault` | Obsidian vault graph + search tools |
+| `ytbg` | `dsh-plugin-ytbg` | YouTube video as the harness backdrop |
 
 ## Local harness
 

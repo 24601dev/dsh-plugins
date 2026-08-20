@@ -1,0 +1,4 @@
+# Persona 5 skin. Marks and textures live under /dsh-plugin-p5/*.
+- insert:
+    - id: plugin-p5
+      name: dsh-plugin-p5

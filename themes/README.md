@@ -5,8 +5,8 @@ and dark palette**; the built-in Appearance control still decides which one is
 showing. The picker appears in **Settings → General**, directly beneath
 Appearance, only while this plugin is enabled.
 
-Ships six themes: **DeepSeek** (the untouched default), **Ember**, **Forest**,
-**Nord**, **Rose** and **Arasaka**.
+Ships eight themes: **DeepSeek** (the untouched default), **Ember**, **Forest**,
+**Nord**, **Rose**, **Arasaka**, **Militech** and **Phantom**.
 
 ### Arasaka
 
@@ -16,9 +16,46 @@ corporate-document read of the same brand: bone paper, near-black type, the red
 used sparingly, rather than an unrelated palette bolted on to satisfy the
 light/dark contract.
 
+Chat body type uses the design system's small markdown scale (14px/24px),
+the HUD density that used to live in a separate plugin. Headings, code,
+and chrome stay on their own scales.
+
 Its dark accent is `rgb(235, 48, 60)` rather than a deeper, more "authentic"
 `rgb(230, 38, 50)`, which measured **4.46:1** against the near-black base — just
 under the 4.5:1 AA floor for small text. The shipped value measures 4.77:1.
+
+### Militech
+
+Black steel and hazard chartreuse — Arasaka's sibling, not a navy reskin.
+Dark is the canonical HUD: near-black with an olive cast, yellow-chartreuse
+chrome (`rgb(220, 232, 40)`, **15.0:1** on the base), square wireframes, corner
+ticks, a faint engineering grid and scanlines. Light is the field-manual read:
+pale chartreuse paper, near-black type, olive used sparingly.
+
+Filled buttons cannot use the neon chartreuse. White-on-neon fails AA
+(~1.3:1), so primary fills are a deeper olive (`rgb(102, 110, 12)` dark /
+`rgb(96, 108, 10)` light) that keeps white label text above 4.5:1. The neon
+is reserved for borders, marks, and glow.
+
+Chat body type uses the same 14px/24px markdown scale as Arasaka. Phantom
+and the default theme do not.
+
+### Phantom
+
+Pop-punk print, not a cyberpunk HUD. Dark is the canonical menu: graphic
+black, white type, a single red (`rgb(228, 34, 44)`). No sub-hues — secondary
+type stays grey, never blue or gold. Light is the calling-card read: off-white
+paper, ink black, a deeper red (`rgb(186, 12, 28)`).
+
+Atmosphere is parallelograms, a thick red rail slash, a white sight-line,
+halftone dots, and hard offset cutouts (drop-shadow, not glow). P5 Royal
+layers paper-cut slabs the same way. No glass or scanlines. Oswald is
+fetched from Google Fonts. It does not copy Persona 5 marks, stamps, or
+lettering — only the colour and construction relationships.
+
+The dark accent on true black measures **4.56:1**; white on that fill
+measures **4.60:1**. Magenta/turquoise from battle HP/MP are left out so
+the red stays the only hue.
 
 ## How it works
 
@@ -56,10 +93,12 @@ those two re-fonts the entire UI, so a theme declares only a display face:
 | Forest | Optima |
 | Nord | Helvetica Neue |
 | Rose | Baskerville |
-| Arasaka | SF Mono (UI *and* code) |
+| Arasaka | Chakra Petch / Menlo |
+| Phantom | Oswald / Menlo |
 
-All are macOS system faces — nothing is fetched, so themes work offline and add
-no network cost.
+Chakra Petch is fetched from Google Fonts once at plugin load (Arasaka and
+Militech share it). Oswald is fetched the same way for Phantom. The others
+are macOS system faces.
 
 Fonts are emitted **once** on the base selector, not duplicated into the light
 and dark blocks: a typeface does not change between modes.

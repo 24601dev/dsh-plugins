@@ -15,7 +15,11 @@ window.__ModuleLoader__.load({
 .dshpc-search button:disabled,.dshpc-actions button:disabled,.dshpc-toolbar button:disabled{opacity:.55;cursor:default}
 .dshpc-status{margin:0;color:var(--dsw-alias-label-tertiary);font-size:13px}
 .dshpc-error{margin:0;color:var(--dsw-alias-state-error-primary);font-size:13px;white-space:pre-wrap}
-.dshpc-cards{display:flex;flex-direction:column;gap:10px;list-style:none;margin:0;padding:0}
+.dshpc-cards{display:grid;grid-template-columns:1fr;gap:10px;list-style:none;margin:0;padding:0}
+/* Two cards per row once there is room for two ~330px columns. */
+@media (min-width:720px){
+.dshpc-cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
 .dshpc-card{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:10px;padding:0;overflow:hidden;display:flex;flex-direction:column;position:relative;transition:border-color .12s ease}
 .dshpc-card:hover{border-color:var(--dsw-alias-border-l1,var(--dsw-alias-state-business-primary))}
 /* center, not "center top": these cards pad the top heavily, so a top-anchored
@@ -169,6 +173,45 @@ window.__ModuleLoader__.load({
       }
     }
 
+    // Conversation-view tabs contributed by community plugins carry no plugin
+    // class or data attribute — the harness renders them as plain role="tab"
+    // buttons keyed by React (not the DOM). The only stable handle is the tab's
+    // visible label, so we hide by label text. Labels of the plugin tabs to
+    // suppress in demo mode:
+    const HIDE_TAB_LABELS = new Set(["Vault", "Cards", "Board"]);
+    const TAB_MARK_ATTR = "data-dshpc-demo-hidden-tab";
+    let tabObserver = null;
+
+    function hidePluginTabs() {
+      for (const tab of document.querySelectorAll('[role="tablist"] [role="tab"]')) {
+        const label = tab.textContent?.trim() ?? "";
+        if (HIDE_TAB_LABELS.has(label) && !tab.hasAttribute(TAB_MARK_ATTR)) {
+          tab.setAttribute(TAB_MARK_ATTR, "1");
+          tab.style.display = "none";
+        }
+      }
+    }
+
+    function restorePluginTabs() {
+      for (const tab of document.querySelectorAll(`[${TAB_MARK_ATTR}]`)) {
+        tab.style.display = "";
+        tab.removeAttribute(TAB_MARK_ATTR);
+      }
+    }
+
+    function startTabObserver() {
+      if (tabObserver || typeof MutationObserver === "undefined") return;
+      // The tablist re-renders on view changes, so re-apply the hide on mutation.
+      tabObserver = new MutationObserver(() => hidePluginTabs());
+      tabObserver.observe(document.body, { childList: true, subtree: true });
+    }
+
+    function stopTabObserver() {
+      tabObserver?.disconnect();
+      tabObserver = null;
+      restorePluginTabs();
+    }
+
     function removeExitPill() {
       document.getElementById(EXIT_PILL_ID)?.remove();
     }
@@ -194,10 +237,13 @@ window.__ModuleLoader__.load({
         }
         tag.textContent = curtainCss();
         setPluginStylesDisabled(true);
+        hidePluginTabs();
+        startTabObserver();
         showExitPill();
       } else {
         tag?.remove();
         setPluginStylesDisabled(false);
+        stopTabObserver();
         removeExitPill();
       }
     }

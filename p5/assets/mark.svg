@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 168 32" fill="#fff">
+  <!-- Original sheared slab wordmark. Not an Atlus logotype. -->
+  <g transform="skewX(-14)">
+    <path d="M8 2h18c8 0 14 5 14 13s-6 13-14 13H20v4H8V2zm12 8v10h5c4 0 6-2 6-5s-2-5-6-5h-5z"/>
+    <path d="M52 2h28v8H64v4h14v8H64v8H52V2z"/>
+  </g>
+</svg>

@@ -1,8 +1,8 @@
 {
-  "name": "dsh-plugin-skillcard",
-  "version": "0.1.1",
+  "name": "dsh-plugin-browser",
+  "version": "0.1.0",
   "private": true,
-  "description": "Wear skill_card_v1 soul, role, and skill seats. Press/authoring is dsh-plugin-skillpress.",
+  "description": "Chrome tab the user and agent share: live view plus browser_* tools",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
@@ -19,19 +19,16 @@
       "inject": [
         "@deepseek-ai/dsh-client-runtime",
         "@deepseek-ai/dsh-client-ui-settings",
-        "@deepseek-ai/dsh-client-ui-slots",
-        "@deepseek-ai/dsh-client-ui-sidebar"
+        "@deepseek-ai/dsh-client-ui-slots"
       ],
       "platform": "web"
     }
   },
   "files": [
-    "lib/index.js",
-    "lib/config.js",
-    "lib/soul.js",
-    "lib/role.js",
-    "lib/skill.js",
-    "lib/client.js",
+    "lib",
     "cordis.patch.yml"
-  ]
+  ],
+  "dependencies": {
+    "puppeteer-core": "^24.15.0"
+  }
 }

@@ -1,0 +1,4 @@
+# YouTube backdrop for the web GUI.
+- insert:
+    - id: plugin-ytbg
+      name: dsh-plugin-ytbg

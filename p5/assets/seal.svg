@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="#fff">
+  <!-- Collapsed-rail stamp: a sheared mask-adjacent chevron, original geometry. -->
+  <polygon points="4,6 26,2 28,26 6,30"/>
+  <polygon fill="#000" points="10,11 22,8 23,21 11,24"/>
+  <polygon points="12,13 20,10 21,20 13,22"/>
+</svg>

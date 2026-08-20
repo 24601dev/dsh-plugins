@@ -6,6 +6,66 @@ window.__ModuleLoader__.load({
     const { createPortal } = require("react-dom");
 
     const AGENTS_KEY = "dsh-plugin-skillcard:agents";
+    const CONFIG_KEY = "dsh-plugin-skillcard:ui";
+    const CONFIG_EVENT = "dsh-skillcard-config-changed";
+    const DEFAULT_CONFIG = { dock: true, sidebar: true };
+
+    function normalizeConfig(raw) {
+      return {
+        dock: raw?.dock !== false,
+        sidebar: raw?.sidebar !== false,
+      };
+    }
+
+    function readLocalConfig() {
+      try {
+        return normalizeConfig(JSON.parse(localStorage.getItem(CONFIG_KEY) || "null"));
+      } catch {
+        return { ...DEFAULT_CONFIG };
+      }
+    }
+
+    function writeLocalConfig(next) {
+      const config = normalizeConfig(next);
+      try { localStorage.setItem(CONFIG_KEY, JSON.stringify(config)); } catch { /* ignore */ }
+      window.dispatchEvent(new CustomEvent(CONFIG_EVENT, { detail: config }));
+      return config;
+    }
+
+    function useSkillcardConfig() {
+      const [config, setConfig] = React.useState(readLocalConfig);
+      React.useEffect(() => {
+        function onChange(event) {
+          setConfig(normalizeConfig(event.detail || readLocalConfig()));
+        }
+        window.addEventListener(CONFIG_EVENT, onChange);
+        return () => window.removeEventListener(CONFIG_EVENT, onChange);
+      }, []);
+      return config;
+    }
+
+    async function fetchConfig() {
+      try {
+        const res = await fetch("/dsh-plugin-skillcard/config");
+        if (!res.ok) return readLocalConfig();
+        return writeLocalConfig(await res.json());
+      } catch {
+        return readLocalConfig();
+      }
+    }
+
+    async function persistConfig(partial) {
+      const next = writeLocalConfig({ ...readLocalConfig(), ...partial });
+      try {
+        const res = await fetch("/dsh-plugin-skillcard/config", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(next),
+        });
+        if (res.ok) return writeLocalConfig(await res.json());
+      } catch { /* local already applied */ }
+      return next;
+    }
 
     function readWornJson(key) {
       try {
@@ -1764,7 +1824,7 @@ window.__ModuleLoader__.load({
       return { RoleSeat };
     })();
 
-    const { SkillBar, confinePageDrops } = (() => {
+    const { SkillBar, confinePageDrops, setComposerDropHot } = (() => {
     const SLOT_COUNT = 8;
     const STORAGE_KEY = "dsh-plugin-skillbar:slots";
     const ROLE_WORN_KEY = "dsh-plugin-roles:worn";
@@ -2506,31 +2566,125 @@ body>[role="status"]:has(svg[viewBox="0 0 115 84"]){display:none!important}
       );
     }
 
-      return { SkillBar, confinePageDrops };
+      return { SkillBar, confinePageDrops, setComposerDropHot };
     })();
+
+    if (typeof document !== "undefined" && !document.querySelector('style[data-plugin-css="dsh-plugin-skillcard-ui"]')) {
+      const tag = document.createElement("style");
+      tag.dataset.pluginCss = "dsh-plugin-skillcard-ui";
+      tag.textContent = `
+.dshsc-card{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+.dshsc-title{margin:0;font-size:14px;font-weight:600;color:var(--dsw-alias-label-primary)}
+.dshsc-meta{margin:0;font-size:12px;line-height:18px;color:var(--dsw-alias-label-tertiary)}
+.dshsc-row{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13px;color:var(--dsw-alias-label-primary)}
+.dshsc-row label{display:inline-flex;align-items:center;gap:8px;cursor:pointer}
+.dshsc-error{margin:0;font-size:12px;color:var(--dsw-alias-state-error-primary)}
+`;
+      document.head.appendChild(tag);
+    }
+
+    function SkillBarGate(props) {
+      const { dock } = useSkillcardConfig();
+      if (!dock) return null;
+      return React.createElement(SkillBar, props);
+    }
+
+    function PersonaSeatGate(props) {
+      const { sidebar } = useSkillcardConfig();
+      if (!sidebar) return null;
+      return React.createElement(PersonaSeat, props);
+    }
+
+    function RoleSeatGate(props) {
+      const { sidebar } = useSkillcardConfig();
+      if (!sidebar) return null;
+      return React.createElement(RoleSeat, props);
+    }
+
+    function SkillcardSettingsCard() {
+      const config = useSkillcardConfig();
+      const [busy, setBusy] = React.useState(false);
+      const [note, setNote] = React.useState(null);
+
+      React.useEffect(() => {
+        void fetchConfig();
+      }, []);
+
+      async function toggle(key, on) {
+        setBusy(true);
+        setNote(null);
+        const result = await persistConfig({ [key]: on });
+        setBusy(false);
+        if (result?.[key] !== on) {
+          setNote("Saved locally, but the server did not confirm. A refresh may revert this.");
+        }
+      }
+
+      return React.createElement("li", { className: "dshsc-card" },
+        React.createElement("h3", { className: "dshsc-title" }, "Skillcard surfaces"),
+        React.createElement("p", { className: "dshsc-meta" },
+          "Hide the composer skill dock, the sidebar wear seats, or both. Equipped cards stay equipped."),
+        React.createElement("div", { className: "dshsc-row" },
+          React.createElement("span", null, "Composer skill dock"),
+          React.createElement("label", null,
+            React.createElement("input", {
+              type: "checkbox",
+              checked: config.dock,
+              disabled: busy,
+              onChange: (event) => void toggle("dock", event.target.checked),
+            }),
+            config.dock ? "On" : "Off",
+          ),
+        ),
+        React.createElement("div", { className: "dshsc-row" },
+          React.createElement("span", null, "Sidebar persona & role seats"),
+          React.createElement("label", null,
+            React.createElement("input", {
+              type: "checkbox",
+              checked: config.sidebar,
+              disabled: busy,
+              onChange: (event) => void toggle("sidebar", event.target.checked),
+            }),
+            config.sidebar ? "On" : "Off",
+          ),
+        ),
+        note ? React.createElement("p", { className: "dshsc-error" }, note) : null,
+      );
+    }
+
+    function onDockDrag(event) {
+      if (!readLocalConfig().dock) return;
+      confinePageDrops(event);
+    }
 
     const inject = ["slots"];
     function apply(ctx) {
+      void fetchConfig();
+      ctx.slots.inject("settings.plugin.item", () => ctx.slots.register({
+        name: "settings.plugin.item",
+        id: "skillcard-ui",
+        order: 5,
+      }, SkillcardSettingsCard));
       ctx.slots.inject("sidebar.footer.action", () => ctx.slots.register({
         name: "sidebar.footer.action",
         id: "persona",
         order: 1,
-      }, PersonaSeat));
+      }, PersonaSeatGate));
       ctx.slots.inject("sidebar.footer.action", () => ctx.slots.register({
         name: "sidebar.footer.action",
         id: "roles",
         order: 2,
-      }, RoleSeat));
+      }, RoleSeatGate));
       const dragEvents = ["dragenter", "dragover", "dragleave", "drop"];
       for (const type of dragEvents) {
-        window.addEventListener(type, confinePageDrops, true);
+        window.addEventListener(type, onDockDrag, true);
       }
       window.addEventListener("dragend", () => setComposerDropHot(false));
       ctx.slots.inject("conversation.input.dock", () => ctx.slots.register({
         name: "conversation.input.dock",
         id: "skillbar",
         order: 30,
-      }, SkillBar));
+      }, SkillBarGate));
       ctx.slots.inject("conversation.composer.dock", () => ctx.slots.register({
         name: "conversation.composer.dock",
         id: "stats",
