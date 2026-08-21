@@ -5,6 +5,7 @@
  */
 import { lstat, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { isCharacterPacket } from "./card-boundary.js";
 
 const NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 const MAX_FILES = 400;
@@ -84,6 +85,9 @@ function stripFrontmatter(md) {
 }
 
 function composeText(name, files) {
+  if (!isCharacterPacket(files)) {
+    throw new Error("not a Character card: needs canonical SOUL.md with kind: character or a legacy persona/soul packet, not a skill or class");
+  }
   const soul = fileText(files, "SOUL.md") || fileText(files, "SKILL.md") || fileText(files, "ROLE.md");
   if (!soul.trim()) throw new Error("Character card needs SOUL.md (or legacy SKILL.md)");
   const body = stripFrontmatter(soul);

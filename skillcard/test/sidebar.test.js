@@ -48,3 +48,9 @@ test("autonomous class changes fan out the new card art", async () => {
   assert.match(roleSeat, /if \(changed\) adoptFace\(null\)/, "the old class art must be released before the replacement loads");
   assert.match(roleSeat, /if \(changed\) window\.dispatchEvent\(new CustomEvent\("dsh-roles-changed"/, "the existing wear event must update every class-art consumer");
 });
+
+test("Class surfaces never render the legacy role label", async () => {
+  const source = await readFile(new URL("../lib/client.js", import.meta.url), "utf8");
+  assert.match(source, /No class\. Add one from the gallery\./);
+  assert.doesNotMatch(source, /No role\. Add one from the gallery\./);
+});

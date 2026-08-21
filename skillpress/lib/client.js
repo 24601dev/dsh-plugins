@@ -752,7 +752,7 @@ Skills are executable modes. Do not put always-on policy here.
         }
         if (cardKind === "role") {
           window.dispatchEvent(new CustomEvent("dsh-roles-wear", { detail: { name: card.name } }));
-          note(`Wearing ${card.name} as role.`);
+          note(`Wearing ${card.name} as class.`);
           return;
         }
         window.dispatchEvent(new CustomEvent("dsh-skillbar-equip", { detail: { name: card.name } }));

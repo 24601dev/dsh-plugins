@@ -17,6 +17,45 @@ window.__ModuleLoader__.load({
       };
     }
 
+    function cardFrontmatter(md) {
+      const m = String(md ?? "").match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
+      if (!m) return {};
+      const meta = {};
+      for (const line of m[1].split(/\r?\n/)) {
+        const f = line.match(/^([A-Za-z][A-Za-z0-9_-]*):\s*(.*?)\s*$/);
+        if (f) meta[f[1].toLowerCase()] = f[2].replace(/^(["'])(.*)\1$/, "$2");
+      }
+      return meta;
+    }
+
+    function cardFileText(files, rel) {
+      const e = files?.[rel];
+      if (!e || typeof e.content !== "string") return "";
+      if (e.encoding === "utf-8") return e.content;
+      if (e.encoding === "base64") return atob(e.content);
+      return "";
+    }
+
+    function isClassCard(files) {
+      const anchor = cardFileText(files, "SKILL.md") || cardFileText(files, "ROLE.md");
+      if (!anchor.trim()) return false;
+      const meta = cardFrontmatter(anchor);
+      const kind = String(meta.kind ?? "").trim().toLowerCase();
+      if (String(meta.class ?? "").trim() || String(meta.role ?? "").trim()) return true;
+      if (kind === "role" || kind === "class") return true;
+      return !cardFileText(files, "SKILL.md").trim() && cardFileText(files, "ROLE.md").trim();
+    }
+
+    function isCharacterCard(files) {
+      const soul = cardFileText(files, "SOUL.md");
+      if (!soul.trim()) return false;
+      const meta = cardFrontmatter(soul);
+      const kind = String(meta.kind ?? "").trim().toLowerCase();
+      if (kind === "character" || kind === "persona" || kind === "soul") return true;
+      if (String(meta.persona ?? "").trim()) return true;
+      return !String(meta.class ?? "").trim() && !String(meta.role ?? "").trim() && kind !== "role" && kind !== "class";
+    }
+
     function bareSkillName(name) {
       const value = String(name || "").trim();
       return value.startsWith("sc-") && value.length > 3 ? value.slice(3) : value;
@@ -451,6 +490,9 @@ window.__ModuleLoader__.load({
       const names = fileNames(card.files);
       if (!names.includes("SOUL.md") && !names.includes("SKILL.md") && !names.includes("ROLE.md")) {
         throw new Error("Character card needs SOUL.md");
+      }
+      if (!isCharacterCard(card.files)) {
+        throw new Error("Not a Character card: needs SOUL.md with kind: character or a legacy persona packet, not a skill or class.");
       }
       const thumb = await makeThumb(bytes);
       return {
@@ -1210,7 +1252,7 @@ window.__ModuleLoader__.load({
                   roleWorn
                     ? null
                     : React.createElement("p", { className: "dshwear-kit-empty" },
-                        "No role. Add one from the gallery."),
+                        "No class. Add one from the gallery."),
                   React.createElement("div", {
                     className: "dshwear-row dshr-host",
                     "data-dsh-role-mount": "1",
@@ -1404,6 +1446,9 @@ window.__ModuleLoader__.load({
       const names = Object.keys(card.files);
       if (!names.includes("SKILL.md") && !names.includes("ROLE.md")) {
         throw new Error("Class card needs SKILL.md");
+      }
+      if (!isClassCard(card.files)) {
+        throw new Error("Not a class card: needs class: frontmatter or a legacy role packet, not an ordinary skill.");
       }
       const thumb = await makeThumb(bytes);
       return {

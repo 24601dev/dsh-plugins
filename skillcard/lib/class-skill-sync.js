@@ -75,7 +75,15 @@ export function applyClassSkillSync(ctx, wear) {
 
     const candidate = pending.get(exec.token);
     pending.delete(exec.token);
-    if (candidate) await wear(candidate.name, candidate.description);
+    if (!candidate) return decision;
+    // Only the outermost successful execution commits. An enclosing tool that is
+    // itself nested propagates the candidate upward; a failed/aborted ancestor
+    // still discards it, so transactional effects follow the whole parent chain.
+    if (exec.parent) {
+      pending.set(exec.parent, candidate);
+    } else {
+      await wear(candidate.name, candidate.description);
+    }
     return decision;
   });
 }

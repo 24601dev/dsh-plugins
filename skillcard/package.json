@@ -32,6 +32,7 @@
     "lib/index.js",
     "lib/config.js",
     "lib/class-skill-sync.js",
+    "lib/card-boundary.js",
     "lib/soul.js",
     "lib/role.js",
     "lib/skill.js",

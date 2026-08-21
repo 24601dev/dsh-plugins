@@ -6,6 +6,7 @@
 import { lstat, mkdir, readdir, readFile, realpath, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { applyClassSkillSync } from "./class-skill-sync.js";
+import { isClassPacket } from "./card-boundary.js";
 
 const NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 const MAX_FILES = 400;
@@ -85,6 +86,9 @@ function stripFrontmatter(md) {
 }
 
 function composeText(name, files, diskPath) {
+  if (!isClassPacket(files)) {
+    throw new Error("not a class card: needs canonical class: frontmatter or a legacy role (ROLE.md / role: / kind: role) packet, not an ordinary skill");
+  }
   const contract = fileText(files, "SKILL.md") || fileText(files, "ROLE.md");
   if (!contract.trim()) throw new Error("class card needs SKILL.md (or legacy ROLE.md)");
   const classes = stripFrontmatter(fileText(files, "CLASSES.md") || fileText(files, "ROLES.md"));

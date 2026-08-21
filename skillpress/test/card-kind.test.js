@@ -39,6 +39,12 @@ test("gallery labels the compatible role kind as class", async () => {
   assert.match(client, /className: "dshp-kind" \}, kindLabel\(card\.kind\)/);
 });
 
+test("Class wear confirmation never renders the legacy role label", async () => {
+  const client = await readFile(new URL("../lib/client.js", import.meta.url), "utf8");
+  assert.match(client, /as class\./);
+  assert.doesNotMatch(client, /as role\./);
+});
+
 function reactHarness() {
   const hooks = [];
   let cursor = 0;
