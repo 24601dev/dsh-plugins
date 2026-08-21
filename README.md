@@ -14,6 +14,7 @@ This is the author source. The Plugin Hub hosts download artifacts; do not treat
 | `resend` | `dsh-plugin-resend` | Resend / regenerate from a session fork |
 | `skillcard` | `dsh-plugin-skillcard` | Wear Character, class, and skill seats |
 | `skillpress` | `dsh-plugin-skillpress` | Author and stamp cards |
+| `subagent-relay` | `dsh-plugin-subagent-relay` | Reliable subagent settlement and active-only picker |
 | `themes` | `dsh-plugin-themes` | Paired light/dark colour themes |
 | `ui-tweaks` | `dsh-plugin-ui-tweaks` | Plugin list and header chrome tweaks |
 | `vault` | `dsh-plugin-vault` | Obsidian vault graph + search tools |

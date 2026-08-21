@@ -1661,16 +1661,14 @@ window.__ModuleLoader__.load({
             wornRef.current = next;
             setWorn(next);
             saveLocal(next);
-            if (changed) window.dispatchEvent(new CustomEvent("dsh-roles-changed", { detail: { name } }));
+            window.dispatchEvent(new CustomEvent("dsh-roles-changed", { detail: { name, record: changed } }));
           }).catch(() => { /* host not ready */ });
         };
         syncWorn();
-        window.addEventListener("dsh-roles-changed", syncWorn);
-        // Poll host state, then fan autonomous changes through the existing wear event.
+        // Every successful poll refreshes consumers; listening to our own event would refetch forever.
         const timer = window.setInterval(syncWorn, 4000);
         return () => {
           cancelled = true;
-          window.removeEventListener("dsh-roles-changed", syncWorn);
           window.clearInterval(timer);
         };
       }, []);

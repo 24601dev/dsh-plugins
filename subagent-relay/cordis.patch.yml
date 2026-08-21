@@ -1,0 +1,4 @@
+# One-shot report relay through the Jobs owner and active-only picker presentation.
+- insert:
+    - id: plugin-subagent-relay
+      name: dsh-plugin-subagent-relay
