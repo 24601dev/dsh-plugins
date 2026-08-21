@@ -48,4 +48,3 @@ test("wear and restart compose from the canonical Character SOUL.md", async () =
     else process.env.DSH_HOME = previous;
   }
 });
-
