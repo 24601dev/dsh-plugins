@@ -5,7 +5,6 @@ window.__ModuleLoader__.load({
     const { indexSubagentDescendants } = require("@deepseek-ai/dsh-client-runtime/client");
     const STYLE_ID = "dsh-plugin-subagent-relay";
     const PICKER_TRIGGER = 'button[aria-haspopup="tree"][aria-label*="subagent" i]';
-    const PICKER = `${PICKER_TRIGGER}:has(+ [role="tree"])`;
     const CSS = `
       div:has(> ${PICKER_TRIGGER} + [role="tree"]),
       ${PICKER_TRIGGER} + [role="tree"] {
@@ -14,7 +13,7 @@ window.__ModuleLoader__.load({
       ${PICKER_TRIGGER} + [role="tree"] [role="treeitem"]:has([data-state="done"]) {
         display: none !important;
       }
-      ${PICKER_TRIGGER}[data-subagent-relay-empty]:has(+ [role="tree"]) {
+      ${PICKER_TRIGGER}[data-subagent-relay-empty] {
         display: none !important;
       }
     `;
@@ -40,10 +39,23 @@ window.__ModuleLoader__.load({
         const summary = state.current === undefined
           ? undefined
           : indexSubagentDescendants(state.byId).get(state.current);
-        const activeCount = summary?.runningCount ?? 0;
-        for (const trigger of document.querySelectorAll(PICKER)) {
+        const catalogEntries = state.current === undefined
+          ? []
+          : state.subagentsByParent?.[state.current]?.entries ?? [];
+        const catalogRunningCount = catalogEntries.filter(
+          (entry) => entry.kind === "child" && entry.activity === "running",
+        ).length;
+        const activeCount = Math.max(catalogRunningCount, summary?.runningCount ?? 0);
+        for (const trigger of document.querySelectorAll(PICKER_TRIGGER)) {
           const count = trigger.querySelectorAll(":scope > span")[1];
-          if (count?.textContent) count.textContent = visibleCount(count.textContent, activeCount);
+          if (count?.textContent) {
+            const next = visibleCount(count.textContent, activeCount);
+            // Assigning textContent replaces the text node even when the string
+            // is unchanged, and the body-wide childList observer sees that as a
+            // fresh mutation — an unconditional write here re-enters project()
+            // forever and hangs the renderer.
+            if (next !== count.textContent) count.textContent = next;
+          }
           if (activeCount === 0) trigger.setAttribute("data-subagent-relay-empty", "");
           else trigger.removeAttribute("data-subagent-relay-empty");
         }
@@ -60,6 +72,7 @@ window.__ModuleLoader__.load({
       });
     }
 
+    module.exports.inject = ["sessions"];
     module.exports.apply = apply;
     return module.exports;
   },

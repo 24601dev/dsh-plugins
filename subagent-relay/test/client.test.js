@@ -1,11 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-function fakeTrigger(text = "7 subagents", ariaLabel = "1 subagent running") {
+function fakeTrigger(text = "7 subagents", ariaLabel = "1 subagent running", hasTree = true) {
   const spans = [{ textContent: "" }, { textContent: text }];
   const attributes = new Map([["aria-label", ariaLabel]]);
   return {
-    nextElementSibling: { getAttribute: (name) => name === "role" ? "tree" : null },
+    nextElementSibling: hasTree
+      ? { getAttribute: (name) => name === "role" ? "tree" : null }
+      : null,
     querySelectorAll: () => spans,
     getAttribute: (name) => attributes.get(name) ?? null,
     setAttribute: (name, value) => attributes.set(name, String(value)),
@@ -15,7 +17,7 @@ function fakeTrigger(text = "7 subagents", ariaLabel = "1 subagent running") {
   };
 }
 
-async function loadClient(triggerOrTriggers, descendantSummary) {
+async function loadClient(triggerOrTriggers, descendantSummary, subagentsByParent = {}) {
   const triggers = Array.isArray(triggerOrTriggers) ? triggerOrTriggers : [triggerOrTriggers];
   let definition;
   let observer;
@@ -54,8 +56,10 @@ async function loadClient(triggerOrTriggers, descendantSummary) {
     assert.equal(id, "@deepseek-ai/dsh-client-runtime/client");
     return runtime;
   });
+  assert.deepEqual(plugin.inject, ["sessions"]);
+  const state = { current: "parent", byId: {}, subagentsByParent };
   const list = {
-    getSnapshot: () => ({ current: "parent", byId: {} }),
+    getSnapshot: () => state,
     subscribe(listener) { subscriptions.push(listener); return () => {}; },
   };
   const disposers = [];
@@ -63,7 +67,7 @@ async function loadClient(triggerOrTriggers, descendantSummary) {
     sessions: { list },
     effect(start) { const dispose = start(); disposers.push(dispose); return dispose; },
   });
-  return { styles, subscriptions, observer, disposers };
+  return { styles, subscriptions, observer, disposers, state };
 }
 
 test("picker uses the installed semantic DOM and renders above content layers", async () => {
@@ -77,9 +81,9 @@ test("picker uses the installed semantic DOM and renders above content layers", 
   assert.match(css, /\[role="treeitem"\]:has\(\[data-state="done"\]\)/);
 });
 
-test("unrelated tree picker is untouched by projection and plugin CSS", async () => {
-  const subagentTrigger = fakeTrigger();
-  const unrelatedTrigger = fakeTrigger("9 settings", "Settings tree");
+test("closed subagent picker projects active count without touching unrelated tree", async () => {
+  const subagentTrigger = fakeTrigger("99 subagents", "99 subagents", false);
+  const unrelatedTrigger = fakeTrigger("9 settings", "Settings tree", false);
   const summary = { current: { count: 7, runningCount: 0 } };
   const active = await loadClient([subagentTrigger, unrelatedTrigger], summary);
   const css = active.styles.map((style) => style.textContent).join("\n");
@@ -87,6 +91,8 @@ test("unrelated tree picker is untouched by projection and plugin CSS", async ()
     .flatMap((match) => match[1].split(","))
     .filter((selector) => selector.includes('[role="tree"]'));
 
+  assert.equal(subagentTrigger.spans[1].textContent, "0 subagents");
+  assert.equal(subagentTrigger.attributes.get("data-subagent-relay-empty"), "");
   assert.equal(unrelatedTrigger.spans[1].textContent, "9 settings");
   assert.equal(unrelatedTrigger.attributes.get("aria-label"), "Settings tree");
   assert.equal(unrelatedTrigger.attributes.has("data-subagent-relay-empty"), false);
@@ -95,6 +101,44 @@ test("unrelated tree picker is untouched by projection and plugin CSS", async ()
     treeSelectors.every((selector) => selector.includes('[aria-label*="subagent" i]')),
     true,
   );
+});
+
+test("re-projection is idempotent so the body observer cannot feed itself", async () => {
+  const trigger = fakeTrigger("99 subagents", "99 subagents");
+  const span = trigger.spans[1];
+  let writes = 0;
+  let value = span.textContent;
+  Object.defineProperty(span, "textContent", {
+    get: () => value,
+    set: (next) => { writes += 1; value = next; },
+  });
+  const summary = { current: { count: 99, runningCount: 0 } };
+  const active = await loadClient(trigger, summary);
+
+  assert.equal(value, "0 subagents");
+  const settled = writes;
+  active.observer();
+  active.observer();
+  assert.equal(writes, settled);
+});
+
+test("current catalog reveals a running child before lineage catches up", async () => {
+  const trigger = fakeTrigger("0 subagents", "0 subagents", false);
+  const summary = { current: { count: 0, runningCount: 0 } };
+  const catalog = { parent: { entries: [
+    { kind: "child", activity: "running" },
+    { kind: "child", activity: "ready" },
+    { kind: "diagnostic", activity: "running" },
+  ] } };
+  const active = await loadClient(trigger, summary, catalog);
+
+  assert.equal(trigger.spans[1].textContent, "1 subagent");
+  assert.equal(trigger.attributes.has("data-subagent-relay-empty"), false);
+
+  active.state.subagentsByParent.parent.entries[0].activity = "ready";
+  active.subscriptions[0]();
+  assert.equal(trigger.spans[1].textContent, "0 subagents");
+  assert.equal(trigger.attributes.get("data-subagent-relay-empty"), "");
 });
 
 test("picker count derives from the existing session store and drops inactive children", async () => {
