@@ -4,7 +4,6 @@ window.__ModuleLoader__.load({
     const module = { exports: {} };
     const React = require("react");
     const { createPortal } = require("react-dom");
-
     const AGENTS_KEY = "dsh-plugin-skillcard:agents";
     const CONFIG_KEY = "dsh-plugin-skillcard:ui";
     const CONFIG_EVENT = "dsh-skillcard-config-changed";
@@ -17,6 +16,7 @@ window.__ModuleLoader__.load({
       };
     }
 
+    // Mirror of canonical card-boundary.js rules. This client IIFE can import only loader-injected React modules.
     function cardFrontmatter(md) {
       const m = String(md ?? "").match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
       if (!m) return {};

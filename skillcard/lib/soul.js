@@ -5,7 +5,8 @@
  */
 import { lstat, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { isCharacterPacket } from "./card-boundary.js";
+import { DomainQualificationError, isCharacterPacket } from "./card-boundary.js";
+import { restoreWear } from "./restore-safe.js";
 
 const NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 const MAX_FILES = 400;
@@ -86,7 +87,7 @@ function stripFrontmatter(md) {
 
 function composeText(name, files) {
   if (!isCharacterPacket(files)) {
-    throw new Error("not a Character card: needs canonical SOUL.md with kind: character or a legacy persona/soul packet, not a skill or class");
+    throw new DomainQualificationError("not a Character card: needs canonical SOUL.md with kind: character or a legacy persona/soul packet, not a skill or class");
   }
   const soul = fileText(files, "SOUL.md") || fileText(files, "SKILL.md") || fileText(files, "ROLE.md");
   if (!soul.trim()) throw new Error("Character card needs SOUL.md (or legacy SKILL.md)");
@@ -221,15 +222,16 @@ export function apply(ctx) {
     void readFile(wornFile(), "utf8").then(async (raw) => {
       const saved = JSON.parse(raw);
       if (!saved || typeof saved.name !== "string" || !saved.name) return;
-      try {
-        await wear(saved.name, typeof saved.description === "string" ? saved.description : "");
-      } catch {
-        if (typeof saved.text !== "string" || !saved.text) return;
-        worn.name = saved.name;
-        worn.description = typeof saved.description === "string" ? saved.description : "";
-        worn.text = saved.text;
-        notifyPrompt();
-      }
+      await restoreWear(
+        (name, description) => wear(name, description),
+        saved,
+        (row) => {
+          worn.name = row.name;
+          worn.description = typeof row.description === "string" ? row.description : "";
+          worn.text = row.text;
+        },
+        notifyPrompt,
+      );
     }).catch(() => { /* no previous Character */ });
   });
 

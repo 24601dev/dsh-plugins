@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { runInNewContext } from "node:vm";
-import { kindFromMeta, normalizeDeclaredKind } from "../lib/card-kind.js";
+import { kindFromMeta, kindLabel, normalizeDeclaredKind } from "../lib/card-kind.js";
 
 test("canonical class metadata normalizes to the legacy role transport", () => {
   assert.equal(kindFromMeta({ class: "PROMPTER" }), "role");
@@ -193,4 +193,27 @@ test("adding files excludes operating-system metadata", async () => {
   tree = view.render();
   const addedNames = elements(tree, (node) => node.type === "li").map((item) => text(item.children[0]));
   assert.deepEqual(addedNames, ["folder/keep.txt"]);
+});
+
+
+test("host presentation labels map compatible transports to canonical kinds", async () => {
+  assert.equal(kindLabel("role"), "class");
+  assert.equal(kindLabel("class"), "class");
+  assert.equal(kindLabel("persona"), "character");
+  assert.equal(kindLabel("character"), "character");
+  assert.equal(kindLabel("soul"), "character");
+  assert.equal(kindLabel("skill"), "skill");
+  assert.equal(kindLabel("unknown"), "skill");
+
+  const host = await readFile(new URL("../lib/index.js", import.meta.url), "utf8");
+  assert.match(host, /kindLabel\(value\.kind\)/);
+  assert.match(host, /kindLabel\(c\.kind\)/);
+  assert.doesNotMatch(host, /Drafted \${value\.kind}/);
+  assert.doesNotMatch(host, /\(\${c\.kind}\)/);
+});
+
+test("repository summary uses canonical Character and class seat names", async () => {
+  const readme = await readFile(new URL("../../README.md", import.meta.url), "utf8");
+  assert.match(readme, /Wear Character, class, and skill seats/);
+  assert.doesNotMatch(readme, /Wear soul, role, and skill seats/);
 });

@@ -6,7 +6,8 @@
 import { lstat, mkdir, readdir, readFile, realpath, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { applyClassSkillSync } from "./class-skill-sync.js";
-import { isClassPacket } from "./card-boundary.js";
+import { DomainQualificationError, isClassPacket } from "./card-boundary.js";
+import { restoreWear } from "./restore-safe.js";
 
 const NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 const MAX_FILES = 400;
@@ -87,7 +88,7 @@ function stripFrontmatter(md) {
 
 function composeText(name, files, diskPath) {
   if (!isClassPacket(files)) {
-    throw new Error("not a class card: needs canonical class: frontmatter or a legacy role (ROLE.md / role: / kind: role) packet, not an ordinary skill");
+    throw new DomainQualificationError("not a class card: needs canonical class: frontmatter or a legacy role (ROLE.md / role: / kind: role) packet, not an ordinary skill");
   }
   const contract = fileText(files, "SKILL.md") || fileText(files, "ROLE.md");
   if (!contract.trim()) throw new Error("class card needs SKILL.md (or legacy ROLE.md)");
@@ -240,15 +241,16 @@ export function apply(ctx) {
     void readFile(wornFile(), "utf8").then(async (raw) => {
       const saved = JSON.parse(raw);
       if (!saved || typeof saved.name !== "string" || !saved.name) return;
-      try {
-        await wear(saved.name, typeof saved.description === "string" ? saved.description : "");
-      } catch {
-        if (typeof saved.text !== "string" || !saved.text) return;
-        worn.name = saved.name;
-        worn.description = typeof saved.description === "string" ? saved.description : "";
-        worn.text = saved.text;
-        notifyPrompt();
-      }
+      await restoreWear(
+        (name, description) => wear(name, description),
+        saved,
+        (row) => {
+          worn.name = row.name;
+          worn.description = typeof row.description === "string" ? row.description : "";
+          worn.text = row.text;
+        },
+        notifyPrompt,
+      );
     }).catch(() => { /* no previous class */ });
   });
 

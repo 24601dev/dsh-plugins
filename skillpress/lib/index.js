@@ -6,7 +6,7 @@ import { mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises"
 import { join } from "node:path";
 import { gunzipSync } from "node:zlib";
 import { defineTool } from "@deepseek-ai/dsh-tools";
-import { kindFromMeta, normalizeDeclaredKind } from "./card-kind.js";
+import { kindFromMeta, kindLabel, normalizeDeclaredKind } from "./card-kind.js";
 
 const NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 const MAX_FILES = 400;
@@ -575,7 +575,7 @@ export function apply(ctx) {
       render: (_args, value) => [{
         type: "text",
         text:
-          `Drafted ${value.kind} ${value.name} into the Cards press (${value.files.length} file${value.files.length === 1 ? "" : "s"})` +
+          `Drafted ${kindLabel(value.kind)} ${value.name} into the Cards press (${value.files.length} file${value.files.length === 1 ? "" : "s"})` +
           `${value.installed ? " and unpacked it into skills" : ""}. Open Cards and press the card to mint the PNG.`,
       }],
     },
@@ -670,7 +670,7 @@ export function apply(ctx) {
       render: (_args, value) => [{
         type: "text",
         text: value.cards.length
-          ? value.cards.map((c) => `· ${c.name} (${c.kind}) — ${c.description}`).join("\n")
+          ? value.cards.map((c) => `· ${c.name} (${kindLabel(c.kind)}) — ${c.description}`).join("\n")
           : "No cards in the gallery yet.",
       }],
     },

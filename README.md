@@ -12,7 +12,7 @@ This is the author source. The Plugin Hub hosts download artifacts; do not treat
 | `chat-density` | `dsh-plugin-chat-density` | Compact chat layout |
 | `p5` | `dsh-plugin-p5` | Persona 5 skin |
 | `resend` | `dsh-plugin-resend` | Resend / regenerate from a session fork |
-| `skillcard` | `dsh-plugin-skillcard` | Wear soul, role, and skill seats |
+| `skillcard` | `dsh-plugin-skillcard` | Wear Character, class, and skill seats |
 | `skillpress` | `dsh-plugin-skillpress` | Author and stamp cards |
 | `themes` | `dsh-plugin-themes` | Paired light/dark colour themes |
 | `ui-tweaks` | `dsh-plugin-ui-tweaks` | Plugin list and header chrome tweaks |

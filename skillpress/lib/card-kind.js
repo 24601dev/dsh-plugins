@@ -7,6 +7,13 @@ export function normalizeDeclaredKind(value) {
   return "";
 }
 
+export function kindLabel(value) {
+  const kind = normalizeDeclaredKind(value);
+  if (kind === "role") return "class";
+  if (kind === "persona") return "character";
+  return "skill";
+}
+
 export function kindFromMeta(meta, fallback = "skill") {
   const declared = normalizeDeclaredKind(meta?.kind);
   if (declared) return declared;

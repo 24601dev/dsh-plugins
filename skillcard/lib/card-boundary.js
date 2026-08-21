@@ -1,4 +1,12 @@
-/** Domain qualification for skill_card_v1 packets: Class vs Character vs ordinary skill. */
+/** Canonical Class/Character qualification rules for skill_card_v1 packets. */
+
+export class DomainQualificationError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "DomainQualificationError";
+    this.code = "CARD_DOMAIN_QUALIFICATION";
+  }
+}
 
 export function frontmatter(markdown) {
   const match = String(markdown ?? "").match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
