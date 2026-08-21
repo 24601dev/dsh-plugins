@@ -5,8 +5,8 @@ and dark palette**; the built-in Appearance control still decides which one is
 showing. The picker appears in **Settings → General**, directly beneath
 Appearance, only while this plugin is enabled.
 
-Ships eight themes: **DeepSeek** (the untouched default), **Ember**, **Forest**,
-**Nord**, **Rose**, **Arasaka**, **Militech** and **Phantom**.
+Ships nine themes: **DeepSeek** (the untouched default), **Ember**, **Forest**,
+**Nord**, **Rose**, **Arasaka**, **Militech**, **Phantom** and **Wayfarer**.
 
 ### Arasaka
 
@@ -57,6 +57,19 @@ The dark accent on true black measures **4.56:1**; white on that fill
 measures **4.60:1**. Magenta/turquoise from battle HP/MP are left out so
 the red stays the only hue.
 
+### Wayfarer
+
+Celestial parchment for long-form chat: a misty slate-blue field sits behind
+ivory paper in light mode and midnight-blue glass in dark mode. Antique gold is
+reserved for keylines, focus, and state; filled actions use a deeper bronze so
+their labels remain readable. Palatino/Georgia gives headings and chrome a
+bookish voice while retaining the harness's complete CJK fallback tail.
+
+The direction borrows material relationships from fantasy adventure interfaces
+without borrowing their identity. Its scenic fields, four-point corner lines,
+and translucent panels are original CSS. It includes no game art, marks,
+character assets, icons, or copied ornamental compositions.
+
 ## How it works
 
 The harness defines its design tokens twice:
@@ -95,10 +108,12 @@ those two re-fonts the entire UI, so a theme declares only a display face:
 | Rose | Baskerville |
 | Arasaka | Chakra Petch / Menlo |
 | Phantom | Oswald / Menlo |
+| Wayfarer | Palatino / Georgia |
 
 Chakra Petch is fetched from Google Fonts once at plugin load (Arasaka and
-Militech share it). Oswald is fetched the same way for Phantom. The others
-are macOS system faces.
+Militech share it). Oswald is fetched the same way for Phantom. The others use
+system-resident faces; Wayfarer includes Palatino and Georgia fallbacks for
+cross-platform coverage.
 
 Fonts are emitted **once** on the base selector, not duplicated into the light
 and dark blocks: a typeface does not change between modes.

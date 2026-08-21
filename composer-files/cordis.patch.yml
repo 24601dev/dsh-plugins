@@ -1,0 +1,4 @@
+# Document upload and drag/drop support for the existing composer.
+- insert:
+    - id: plugin-composer-files
+      name: dsh-plugin-composer-files
