@@ -1,9 +1,9 @@
 /**
- * Host half of the persona seat: unpack a skill_card_v1 soul onto disk and
+ * Host half of the Character seat: unpack a skill_card_v1 SOUL.md onto disk and
  * inject it as an always-on system-prompt section. Does not install into the
  * skill catalog — wearing is not slash-casting.
  */
-import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { lstat, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 const NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
@@ -46,9 +46,17 @@ async function readJson(req) {
 
 function safeName(name) {
   if (typeof name !== "string" || !NAME_RE.test(name)) {
-    throw new Error("persona name must be 1–64 letters, digits, dot, underscore, or hyphen");
+    throw new Error("Character name must be 1–64 letters, digits, dot, underscore, or hyphen");
   }
-  return name;
+  return name.startsWith("sc-") && name.length > 3 ? name.slice(3) : name;
+}
+
+async function isPacketLink(root) {
+  try {
+    return (await lstat(root)).isSymbolicLink();
+  } catch {
+    return false;
+  }
 }
 
 function safeRel(rel) {
@@ -77,12 +85,12 @@ function stripFrontmatter(md) {
 
 function composeText(name, files) {
   const soul = fileText(files, "SOUL.md") || fileText(files, "SKILL.md") || fileText(files, "ROLE.md");
-  if (!soul.trim()) throw new Error("persona card needs SOUL.md (or SKILL.md)");
+  if (!soul.trim()) throw new Error("Character card needs SOUL.md (or legacy SKILL.md)");
   const body = stripFrontmatter(soul);
-  if (!body) throw new Error("persona markdown is empty");
+  if (!body) throw new Error("Character markdown is empty");
   const text = [
-    `# Worn persona: ${name}`,
-    "You are wearing this identity as a standing overlay. It sits after the harness persona and does not remove your tools. Speak, value, and decide as this persona unless the user unequips it.",
+    `# Worn Character: ${name}`,
+    "You are wearing this Character as a standing identity overlay. It does not remove your tools. Speak, value, and decide as this Character unless the user unequips it.",
     body,
   ].join("\n\n");
   return text.length > MAX_PROMPT ? `${text.slice(0, MAX_PROMPT)}\n\n[truncated]` : text;
@@ -94,12 +102,13 @@ async function writeFiles(name, files) {
     throw new Error("files must be an object");
   }
   const keys = Object.keys(files);
-  if (!keys.length) throw new Error("persona has no files");
+  if (!keys.length) throw new Error("Character has no files");
   if (keys.length > MAX_FILES) throw new Error(`too many files (${keys.length})`);
   const anchors = keys.filter((k) => k === "SOUL.md" || k === "SKILL.md" || k === "ROLE.md");
-  if (!anchors.length) throw new Error("persona is missing SOUL.md");
+  if (!anchors.length) throw new Error("Character is missing SOUL.md");
 
   const root = join(homeRoot(), id);
+  if (await isPacketLink(root)) return root;
   const extras = [];
   const last = [];
   let bytes = 0;
@@ -115,7 +124,7 @@ async function writeFiles(name, files) {
     else if (entry.encoding === "base64") buf = Buffer.from(content, "base64");
     else throw new Error(`${rel}: unsupported encoding ${entry.encoding}`);
     bytes += buf.length;
-    if (bytes > MAX_BYTES) throw new Error("persona files exceed 2MB");
+    if (bytes > MAX_BYTES) throw new Error("Character files exceed 2MB");
     const dest = { rel, buf };
     if (anchors.includes(rel)) last.push(dest);
     else extras.push(dest);
@@ -156,10 +165,10 @@ export function apply(ctx) {
     // Re-wear without re-uploading: the folder from the last wear is still on
     // disk, so { name } alone is enough. Needed for per-session wear restore,
     // where the card may not be in the gallery at all.
-    let payload = files;
-    if (!payload) payload = await readStoredFiles(id);
-    const text = composeText(id, payload);
-    const path = await writeFiles(id, payload);
+    let path = join(homeRoot(), id);
+    if (files) path = await writeFiles(id, files);
+    const canonicalFiles = await readStoredFiles(id);
+    const text = composeText(id, canonicalFiles);
     worn.name = id;
     worn.description = typeof description === "string" ? description : "";
     worn.text = text;
@@ -205,15 +214,19 @@ export function apply(ctx) {
   };
 
   ctx.effect(() => {
-    void readFile(wornFile(), "utf8").then((raw) => {
+    void readFile(wornFile(), "utf8").then(async (raw) => {
       const saved = JSON.parse(raw);
-      if (saved && typeof saved.text === "string" && saved.text && typeof saved.name === "string") {
+      if (!saved || typeof saved.name !== "string" || !saved.name) return;
+      try {
+        await wear(saved.name, typeof saved.description === "string" ? saved.description : "");
+      } catch {
+        if (typeof saved.text !== "string" || !saved.text) return;
         worn.name = saved.name;
         worn.description = typeof saved.description === "string" ? saved.description : "";
         worn.text = saved.text;
         notifyPrompt();
       }
-    }).catch(() => { /* no previous soul */ });
+    }).catch(() => { /* no previous Character */ });
   });
 
   const routes = [

@@ -8,7 +8,7 @@ import { apply as applyRole } from "./role.js";
 import { apply as applySkills } from "./skill.js";
 
 export const name = "plugin-skillcard";
-export const inject = ["webServer", "systemPrompt"];
+export const inject = ["webServer", "systemPrompt", "tools"];
 
 export function apply(ctx) {
   applyConfig(ctx);

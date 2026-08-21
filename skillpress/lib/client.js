@@ -46,14 +46,14 @@ Then state plainly what this list cannot catch. A checklist fixes form, not trut
 Link the external standard or method, and record its date. Do not paste copyrighted text.
 `,
       persona: `---
-name: persona-name
-description: Who this is. Worn as the soul seat, not slash-invoked. Name the voice in a sentence, and what it is not (not a job title).
-kind: persona
+name: character-name
+description: Who this Character is. Worn as identity, not slash-invoked. Name the voice in a sentence, and what it is not (not a job title).
+kind: character
 ---
 
-# Persona Name
+# Character Name
 
-You are [name]. This file is identity, not a job. A role card may sit on top of you; it changes what you are hired to do, not who you are.
+You are [name]. This file is identity, not a job. A class card may sit on top of you; it changes what you are hired to do, not who you are.
 
 ## Voice
 
@@ -65,38 +65,37 @@ You are [name]. This file is identity, not a job. A role card may sit on top of 
 
 ## Limits
 
-- You still have your tools. Wearing this persona does not make you stop writing code, reading files, or running commands.
-- You are not the role. If no role is worn, do not invent a job title.
+- You still have your tools. Wearing this Character does not make you stop writing code, reading files, or running commands.
+- You are not the class. If no class is worn, do not invent a job title.
 - Drop this overlay when the user unequips it.
 `,
       role: `---
-name: sc-rolename
-description: One line naming what this role owns and when to use it. Include the literal invocation, /sc-rolename, and the phrases a user would actually say. Name what it must NOT be used for.
-role: SC-ROLENAME
-kind: role
+name: class-name
+description: One line naming what this class owns and when to use it. Include the phrases a user would actually say. Name what it must NOT be used for.
+class: CLASSNAME
 ---
 
-# SC-ROLENAME
+# CLASSNAME
 
-> One-sentence ownership statement. Name what this role owns and the explicit boundaries it does not cross.
+> One-sentence ownership statement. Name what this class owns and the explicit boundaries it does not cross.
 
-This file is both the standing contract for the role and its executable entry.
+This file is both the standing contract for the class and its executable entry.
 
 ## Must Read
 
-Read this before starting. It ships with the role, so it is always present:
+Read this before starting. It ships with the class, so it is always present:
 
-- \`ROLES.md\` — universal rules and role boundaries.
+- \`CLASSES.md\` — universal rules and class boundaries.
 
-Add only role-specific always-needed owners here. Keep the list short. Drop ROLES.md onto the plate if this role belongs to a packet.
+Add only class-specific always-needed owners here. Keep the list short. Drop CLASSES.md onto the plate if this class belongs to a packet.
 
 ## Always-On Rules
 
 These hold even if you skip a workflow. The workflows carry the procedure; do not restate it here.
 
-- State the role's permanent contract in short bullets.
+- State the class's permanent contract in short bullets.
 - Include hard prohibitions and escalation boundaries.
-- Include a rule only when it is always true for this role.
+- Include a rule only when it is always true for this class.
 - Never edit a vault file without explicit approval from the user.
 
 ## Route By Task
@@ -107,7 +106,7 @@ Each named workflow is an extra file on the plate, not text in this contract.
 
 ## Companion Skills
 
-- \`sc-skill-name\` — use for a concrete trigger.
+- \`skill-name\` — use for a concrete trigger.
 
 Skills are executable modes. Do not put always-on policy here.
 
@@ -120,11 +119,11 @@ Skills are executable modes. Do not put always-on policy here.
 
 ## Validate
 
-- State the standard validation for this role.
+- State the standard validation for this class.
 
 ## Output
 
-- State the role's expected final report shape: outcome, evidence, changed files, validation, blockers, and next required owner.
+- State the class's expected final report shape: outcome, evidence, changed files, validation, blockers, and next required owner.
 `,
     };
     const TEMPLATE = TEMPLATES.skill;
@@ -134,11 +133,17 @@ Skills are executable modes. Do not put always-on policy here.
     }
     function kindFromMeta(meta, fallback) {
       const raw = String(meta?.kind || "").trim().toLowerCase();
-      if (raw === "soul" || raw === "persona") return "persona";
-      if (raw === "role") return "role";
+      if (raw === "soul" || raw === "persona" || raw === "character") return "persona";
+      if (raw === "role" || raw === "class") return "role";
       if (raw === "skill") return "skill";
+      if (String(meta?.class || "").trim()) return "role";
       if (String(meta?.role || "").trim()) return "role";
-      return fallback || "skill";
+      const fallbackRaw = String(fallback || "").trim().toLowerCase();
+      return fallbackRaw === "class" ? "role" : fallbackRaw || "skill";
+    }
+    function kindLabel(value) {
+      const kind = kindFromMeta({ kind: value }, "skill");
+      return kind === "role" ? "class" : kind === "persona" ? "character" : kind;
     }
     function kindFromFiles(files) {
       if (files["SOUL.md"]) return "persona";
@@ -155,10 +160,7 @@ Skills are executable modes. Do not put always-on policy here.
 .dshp-lead{margin:0;max-width:100%;font-size:13px;line-height:20px;color:var(--dsw-alias-label-tertiary);flex:none}
 .dshp-scroll{flex:1 1 auto;min-height:0;min-width:0;overflow:auto;display:flex;flex-direction:column;gap:12px}
 .dshp-scroll>*{flex:none}
-.dshp-tabs{display:flex;gap:4px;flex:none}
-.dshp-tab{border:1px solid transparent;background:transparent;color:var(--dsw-alias-label-tertiary);border-radius:8px;padding:4px 12px;font:inherit;font-size:12px;cursor:pointer}
-.dshp-tab:hover{color:var(--dsw-alias-label-primary)}
-.dshp-tab[data-on="1"]{color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3)}
+.dshp-tabs{display:flex;gap:4px;flex:none}.dshp-tab{border:1px solid transparent;background:transparent;color:var(--dsw-alias-label-tertiary);border-radius:8px;padding:4px 12px;font:inherit;font-size:12px;cursor:pointer}.dshp-tab:hover{color:var(--dsw-alias-label-primary)}.dshp-tab[data-on="1"]{color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3)}
 .dshp-bed{display:grid;grid-template-columns:minmax(0,280px) minmax(0,1fr);gap:14px;min-width:0;width:100%}
 .dshp-platen{display:flex;flex-direction:column;gap:8px;min-width:0;max-width:100%;overflow:hidden;padding:12px;border:1px solid var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-bg-layer-2)}
 .dshp-platen h2{margin:0;font:inherit;font-size:14px;font-weight:600;color:var(--dsw-alias-label-primary)}
@@ -464,7 +466,7 @@ Skills are executable modes. Do not put always-on policy here.
       const [kind, setKind] = React.useState("skill");
       const [plate, setPlate] = React.useState({});
       const [over, setOver] = React.useState(null);
-      const [status, setStatus] = React.useState("Write a skill, persona, or role, optionally drop a face and extra files, then press.");
+      const [status, setStatus] = React.useState("Write a skill, Character, or class, optionally drop a face and extra files, then press.");
       const [err, setErr] = React.useState(false);
       const [busy, setBusy] = React.useState(false);
       const [ticket, setTicket] = React.useState(null);
@@ -539,9 +541,7 @@ Skills are executable modes. Do not put always-on policy here.
         });
       }
 
-      // OS junk that should never land on the plate (or in a pressed card).
       const JUNK_FILE = /^(?:\.DS_Store|Thumbs\.db|desktop\.ini)$/i;
-
       async function absorbFile(file, rel) {
         const name = (rel || file.webkitRelativePath || file.name).replace(/\\/g, "/");
         if (!name || name.endsWith("/")) return false;
@@ -747,7 +747,7 @@ Skills are executable modes. Do not put always-on policy here.
         const cardKind = card.kind || "skill";
         if (cardKind === "persona") {
           window.dispatchEvent(new CustomEvent("dsh-persona-wear", { detail: { name: card.name } }));
-          note(`Wearing ${card.name} as persona.`);
+          note(`Wearing ${card.name} as Character.`);
           return;
         }
         if (cardKind === "role") {
@@ -786,19 +786,15 @@ Skills are executable modes. Do not put always-on policy here.
         onDrop: (event) => { event.preventDefault(); event.stopPropagation(); },
       },
         React.createElement("p", { className: "dshp-lead" },
-          "Ask the chat to write a skill, persona, or role — it lands in this press. Press a card to mint the PNG. Load wears a persona or role, or puts a skill on the soul bar (or the role bar if a job is worn).",
+          "Ask the chat to write a skill, Character, or class — it lands in this press. Press a card to mint the PNG. Load wears a Character or class, or puts a skill on the Character bar (or the class bar if a job is worn).",
         ),
         React.createElement("div", { className: "dshp-tabs" },
           React.createElement("button", {
-            type: "button",
-            className: "dshp-tab",
-            "data-on": tab === "gallery" ? "1" : "0",
+            type: "button", className: "dshp-tab", "data-on": tab === "gallery" ? "1" : "0",
             onClick: () => setTab("gallery"),
           }, `Gallery${cards.length ? ` (${cards.length})` : ""}`),
           React.createElement("button", {
-            type: "button",
-            className: "dshp-tab",
-            "data-on": tab === "create" ? "1" : "0",
+            type: "button", className: "dshp-tab", "data-on": tab === "create" ? "1" : "0",
             onClick: () => setTab("create"),
           }, "Create"),
         ),
@@ -851,7 +847,7 @@ Skills are executable modes. Do not put always-on policy here.
                   React.createElement("img", { src: card.url, alt: "" }),
                   React.createElement("div", { className: "dshp-cardbody" },
                     React.createElement("p", { className: "dshp-cardname", title: card.name }, card.name),
-                    React.createElement("p", { className: "dshp-kind" }, card.kind || "skill"),
+                    React.createElement("p", { className: "dshp-kind" }, kindLabel(card.kind)),
                     card.description ? React.createElement("p", { className: "dshp-carddesc" }, card.description) : null,
                     React.createElement("div", { className: "dshp-cardacts" },
                       React.createElement("button", {
@@ -918,12 +914,12 @@ Skills are executable modes. Do not put always-on policy here.
             ),
           ),
           React.createElement("section", { className: "dshp-platen" },
-            React.createElement("h2", null, kind === "persona" ? "SOUL.md" : kind === "role" ? "Role (SKILL.md)" : "SKILL.md"),
+            React.createElement("h2", null, kind === "persona" ? "SOUL.md" : kind === "role" ? "Class (SKILL.md)" : "SKILL.md"),
             React.createElement("p", { className: "dshp-hint" },
               kind === "persona"
-                ? "Identity, not a job. Frontmatter needs name, description, and kind: persona."
+                ? "Character identity, not a job. Keep the filename SOUL.md; frontmatter needs name, description, and kind: character."
                 : kind === "role"
-                  ? "Standing job contract. Frontmatter needs name, description, and role:. Add ROLES.md on the plate for a packet."
+                  ? "Standing job contract. Frontmatter needs name, description, and class:. Add CLASSES.md on the plate for a packet."
                   : "A castable move. Frontmatter needs name and description. Extra files (scripts, references) go on the plate.",
             ),
             React.createElement("div", { className: "dshp-kinds" },
@@ -933,7 +929,7 @@ Skills are executable modes. Do not put always-on policy here.
                 className: "dshp-btn",
                 "data-on": kind === id ? "1" : "0",
                 onClick: () => chooseKind(id),
-              }, id === "persona" ? "Persona" : id === "role" ? "Role" : "Skill")),
+              }, id === "persona" ? "Character" : id === "role" ? "Class" : "Skill")),
             ),
             React.createElement("textarea", {
               className: "dshp-md",

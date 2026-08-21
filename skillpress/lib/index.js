@@ -6,6 +6,7 @@ import { mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises"
 import { join } from "node:path";
 import { gunzipSync } from "node:zlib";
 import { defineTool } from "@deepseek-ai/dsh-tools";
+import { kindFromMeta, normalizeDeclaredKind } from "./card-kind.js";
 
 const NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 const MAX_FILES = 400;
@@ -163,28 +164,18 @@ function fileText(files, rel) {
   return "";
 }
 
-function kindFromMeta(meta, fallback = "skill") {
-  const raw = String(meta?.kind || "").trim().toLowerCase();
-  if (raw === "soul" || raw === "persona") return "persona";
-  if (raw === "role") return "role";
-  if (raw === "skill") return "skill";
-  if (String(meta?.role || "").trim()) return "role";
-  return fallback;
-}
-
 function inferKind(card) {
   const files = card?.files && typeof card.files === "object" ? card.files : {};
-  const raw = String(card?.kind || "").trim().toLowerCase();
-  if (raw === "soul" || raw === "persona") return "persona";
-  if (raw === "role" || raw === "skill") return raw;
+  const declared = normalizeDeclaredKind(card?.kind);
+  if (declared === "role" || declared === "persona") return declared;
   try {
     const anchor = pickAnchor(files);
     const base = anchor.split("/").pop();
     if (base === "SOUL.md") return "persona";
     if (base === "ROLE.md") return "role";
-    return kindFromMeta(parseFrontmatter(fileText(files, anchor)));
+    return kindFromMeta(parseFrontmatter(fileText(files, anchor)), declared || "skill");
   } catch {
-    return "skill";
+    return declared || "skill";
   }
 }
 
@@ -340,7 +331,7 @@ async function writeSkillDraft({ skill_md, files, install, kind: kindArg }) {
   const meta = parseFrontmatter(skillMd);
   const name = safeName(String(meta.name).trim());
   const asked = String(kindArg || "").trim().toLowerCase();
-  const fallback = asked === "soul" || asked === "persona" ? "persona" : asked === "role" ? "role" : "skill";
+  const fallback = normalizeDeclaredKind(asked) || "skill";
   const kind = kindFromMeta(meta, fallback);
   const fileName = kind === "persona" ? "SOUL.md" : "SKILL.md";
   const extras = normalizeExtraFiles(files);
@@ -351,7 +342,7 @@ async function writeSkillDraft({ skill_md, files, install, kind: kindArg }) {
   if (bytes > MAX_BYTES) throw new Error("card files exceed 2MB");
 
   if (install && kind !== "skill") {
-    throw new Error("install:true is only for skills (slash catalog). Persona and role cards are worn from the Cards gallery.");
+    throw new Error("install:true is only for skills (slash catalog). Character and class cards are worn from the Cards gallery.");
   }
 
   const draft = {
@@ -531,29 +522,29 @@ export function apply(ctx) {
     name: "tool:skillpress",
     order: 116,
     text:
-      "When the user asks you to write, draft, or mint a card, call cards_write. Pass kind: skill, persona, or role. Do not paste the full markdown in chat unless they ask to see it. The Cards press picks up the draft; tell them to open Cards and click Press card to mint the PNG.\n" +
-      "A skill is a move (cast from the hotbar). A persona is identity (SOUL.md, worn on the soul seat). A role is a job (SKILL.md with role: frontmatter, worn on the role seat). Do not put always-on identity or job policy in a skill.\n" +
-      "skill_md must start with YAML frontmatter (name, description). For a persona add kind: persona. For a role add role: SC-ROLENAME (and kind: role if you want). Body for a skill: title + boundary, optional Modes, Rules, Safeguards, Self-Lint, Sources. Body for a persona: Voice, Values, Limits — it is who, not a job. Body for a role follows the SkyCastle role template: ownership sentence, Must Read (ROLES.md first), Always-On Rules, Route By Task, Companion Skills, Default Flow, Validate, Output. Keep Always-On Rules short; procedure belongs in workflows/ extra files, not the standing contract.\n" +
-      "Pass install:true only for skills that should unpack into the slash catalog immediately. Persona and role cards are worn from the Cards gallery after pressing. Use cards_read to revise. Use cards_list before overwriting.",
+      "When the user asks you to write, draft, or mint a card, call cards_write. Pass kind: skill, character, or class; persona and role remain compatible transport names. Do not paste the full markdown in chat unless they ask to see it. The Cards press picks up the draft; tell them to open Cards and click Press card to mint the PNG.\n" +
+      "A skill is a move (cast from the hotbar). A Character is identity (SOUL.md with kind: character frontmatter, worn on the Character seat). A class is a job (SKILL.md with class: frontmatter, worn on the class seat). Do not put always-on identity or job policy in a skill.\n" +
+      "skill_md must start with YAML frontmatter (name, description). For a Character add kind: character and keep the filename SOUL.md; kind: persona and kind: soul remain accepted for compatibility. For a class add class: CLASSNAME; kind: role and legacy role: metadata remain accepted for compatibility. Body for a skill: title + boundary, optional Modes, Rules, Safeguards, Self-Lint, Sources. Body for a Character: Voice, Values, Limits — it is who, not a job. Body for a class follows the class template: ownership sentence, Must Read (CLASSES.md first), Always-On Rules, Route By Task, Companion Skills, Default Flow, Validate, Output. Keep Always-On Rules short; procedure belongs in workflows/ extra files, not the standing contract.\n" +
+      "Pass install:true only for skills that should unpack into the slash catalog immediately. Character and class cards are worn from the Cards gallery after pressing. Use cards_read to revise. Use cards_list before overwriting.",
   });
 
   ctx.tools.register(defineTool({
     name: "cards_write",
     description:
-      "Write a skill, persona, or role into the Cards press. skill_md is the standing markdown (SKILL.md or SOUL.md) with YAML frontmatter. Does not mint the PNG; the user presses the card in the UI.",
+      "Write a skill, Character, or class into the Cards press. Character and class cards use compatible internal persona and role transports. skill_md is the standing markdown (SKILL.md or SOUL.md) with YAML frontmatter. Does not mint the PNG; the user presses the card in the UI.",
     parameters: {
       skill_md: {
         type: "string",
         required: true,
-        description: "Full card markdown including --- frontmatter ---. Persona uses kind: persona. Role uses role: SC-NAME.",
+        description: "Full card markdown including --- frontmatter ---. Character uses kind: character in SOUL.md. Class uses class: CLASSNAME; legacy persona, soul, and role metadata remain accepted.",
       },
       kind: {
         type: "string",
-        description: "skill, persona, or role. Inferred from frontmatter when omitted.",
+        description: "skill, character, class, or compatible persona/role. Inferred from frontmatter when omitted.",
       },
       files: {
         type: "array",
-        description: "Optional extra utf-8 files. Each item is {path, content}, e.g. path \"scripts/roll.py\" or \"ROLES.md\".",
+        description: "Optional extra utf-8 files. Each item is {path, content}, e.g. path \"scripts/roll.py\" or \"CLASSES.md\".",
         items: {
           type: "object",
           additionalProperties: false,
@@ -565,7 +556,7 @@ export function apply(ctx) {
       },
       install: {
         type: "boolean",
-        description: "If true, unpack a skill into the harness skills folder now. Rejected for persona and role. Defaults to false.",
+        description: "If true, unpack a skill into the harness skills folder now. Rejected for Character and class cards. Defaults to false.",
       },
     },
     output: {

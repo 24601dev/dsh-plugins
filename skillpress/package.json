@@ -1,13 +1,14 @@
 {
   "name": "dsh-plugin-skillpress",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
-  "description": "Author skill, persona, and role cards, stamp a PNG, plus cards_write for the connected agent",
+  "description": "Author skill, Character, and class cards, stamp a PNG, plus cards_write for the connected agent",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
     ".": "./lib/index.js",
     "./client": "./lib/client.js",
+    "./card-kind": "./lib/card-kind.js",
     "./cordis.patch.yml": "./cordis.patch.yml",
     "./package.json": "./package.json"
   },
@@ -24,9 +25,13 @@
       "platform": "web"
     }
   },
+  "scripts": {
+    "test": "node --test"
+  },
   "files": [
     "lib/index.js",
     "lib/client.js",
+    "lib/card-kind.js",
     "cordis.patch.yml"
   ]
 }

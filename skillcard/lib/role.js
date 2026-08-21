@@ -1,10 +1,11 @@
 /**
- * Host half of the role seat: unpack a role card onto disk and inject
- * ROLES.md + the standing contract as an always-on overlay. Workflows stay
- * on disk and are not dumped into the prompt.
+ * Host half of the class seat. The legacy role API remains the transport,
+ * while CLASSES.md + the standing class contract form the always-on overlay.
+ * Workflows stay on disk and are not dumped into the prompt.
  */
-import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { lstat, mkdir, readdir, readFile, realpath, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { applyClassSkillSync } from "./class-skill-sync.js";
 
 const NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 const MAX_FILES = 400;
@@ -46,9 +47,17 @@ async function readJson(req) {
 
 function safeName(name) {
   if (typeof name !== "string" || !NAME_RE.test(name)) {
-    throw new Error("role name must be 1–64 letters, digits, dot, underscore, or hyphen");
+    throw new Error("class name must be 1–64 letters, digits, dot, underscore, or hyphen");
   }
-  return name;
+  return name.startsWith("sc-") && name.length > 3 ? name.slice(3) : name;
+}
+
+async function isPacketLink(root) {
+  try {
+    return (await lstat(root)).isSymbolicLink();
+  } catch {
+    return false;
+  }
 }
 
 function safeRel(rel) {
@@ -77,17 +86,17 @@ function stripFrontmatter(md) {
 
 function composeText(name, files, diskPath) {
   const contract = fileText(files, "SKILL.md") || fileText(files, "ROLE.md");
-  if (!contract.trim()) throw new Error("role card needs SKILL.md (or ROLE.md)");
-  const roles = stripFrontmatter(fileText(files, "ROLES.md"));
+  if (!contract.trim()) throw new Error("class card needs SKILL.md (or legacy ROLE.md)");
+  const classes = stripFrontmatter(fileText(files, "CLASSES.md") || fileText(files, "ROLES.md"));
   const body = stripFrontmatter(contract);
   const parts = [
-    `# Worn role: ${name}`,
+    `# Worn class: ${name}`,
     `You are wearing this job as a standing overlay for the whole session. Do not wait for a slash invocation. Workflow and reference files are on disk at ${diskPath}; open one only when this task needs that procedure.`,
   ];
-  if (roles) {
-    parts.push("## Packet law", roles);
+  if (classes) {
+    parts.push("## Class law", classes);
   }
-  parts.push("## Role contract", body);
+  parts.push("## Class contract", body);
   const text = parts.join("\n\n");
   return text.length > MAX_PROMPT ? `${text.slice(0, MAX_PROMPT)}\n\n[truncated]` : text;
 }
@@ -98,12 +107,13 @@ async function writeFiles(name, files) {
     throw new Error("files must be an object");
   }
   const keys = Object.keys(files);
-  if (!keys.length) throw new Error("role has no files");
+  if (!keys.length) throw new Error("class has no files");
   if (keys.length > MAX_FILES) throw new Error(`too many files (${keys.length})`);
   const anchors = keys.filter((k) => k === "SKILL.md" || k === "ROLE.md" || k === "SOUL.md");
-  if (!anchors.length) throw new Error("role is missing SKILL.md");
+  if (!anchors.length) throw new Error("class is missing SKILL.md");
 
   const root = join(homeRoot(), id);
+  if (await isPacketLink(root)) return root;
   const extras = [];
   const last = [];
   let bytes = 0;
@@ -119,7 +129,7 @@ async function writeFiles(name, files) {
     else if (entry.encoding === "base64") buf = Buffer.from(content, "base64");
     else throw new Error(`${rel}: unsupported encoding ${entry.encoding}`);
     bytes += buf.length;
-    if (bytes > MAX_BYTES) throw new Error("role files exceed 2MB");
+    if (bytes > MAX_BYTES) throw new Error("class files exceed 2MB");
     const dest = { rel, buf };
     if (anchors.includes(rel)) last.push(dest);
     else extras.push(dest);
@@ -160,10 +170,10 @@ export function apply(ctx) {
     // Re-wear without re-uploading: the folder from the last wear is still on
     // disk, so { name } alone is enough. Needed for per-session wear restore,
     // where the card may not be in the gallery at all.
-    let payload = files;
-    if (!payload) payload = await readStoredFiles(id);
-    const path = await writeFiles(id, payload);
-    const text = composeText(id, payload, path);
+    let path = join(homeRoot(), id);
+    if (files) path = await writeFiles(id, files);
+    const canonicalFiles = await readStoredFiles(id);
+    const text = composeText(id, canonicalFiles, path);
     worn.name = id;
     worn.description = typeof description === "string" ? description : "";
     worn.text = text;
@@ -191,6 +201,18 @@ export function apply(ctx) {
     } catch {
       throw new Error(`${id} was never worn here — no stored files to re-wear`);
     }
+    if (!files["CLASSES.md"]) {
+      let cursor = await realpath(root);
+      for (let depth = 0; depth < 5; depth += 1) {
+        try {
+          files["CLASSES.md"] = { content: await readFile(join(cursor, "CLASSES.md"), "utf8"), encoding: "utf-8" };
+          break;
+        } catch { /* keep walking toward the canonical packet root */ }
+        const parent = join(cursor, "..");
+        if (parent === cursor) break;
+        cursor = parent;
+      }
+    }
     if (!Object.keys(files).length) throw new Error(`${id} has no stored files`);
     return files;
   }
@@ -208,16 +230,22 @@ export function apply(ctx) {
     try { ctx.emit("system-prompt/change"); } catch { /* next assemble still reads worn.text */ }
   };
 
+  applyClassSkillSync(ctx, wear);
+
   ctx.effect(() => {
-    void readFile(wornFile(), "utf8").then((raw) => {
+    void readFile(wornFile(), "utf8").then(async (raw) => {
       const saved = JSON.parse(raw);
-      if (saved && typeof saved.text === "string" && saved.text && typeof saved.name === "string") {
+      if (!saved || typeof saved.name !== "string" || !saved.name) return;
+      try {
+        await wear(saved.name, typeof saved.description === "string" ? saved.description : "");
+      } catch {
+        if (typeof saved.text !== "string" || !saved.text) return;
         worn.name = saved.name;
         worn.description = typeof saved.description === "string" ? saved.description : "";
         worn.text = saved.text;
         notifyPrompt();
       }
-    }).catch(() => { /* no previous role */ });
+    }).catch(() => { /* no previous class */ });
   });
 
   const routes = [

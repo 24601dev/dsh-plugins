@@ -17,6 +17,11 @@ window.__ModuleLoader__.load({
       };
     }
 
+    function bareSkillName(name) {
+      const value = String(name || "").trim();
+      return value.startsWith("sc-") && value.length > 3 ? value.slice(3) : value;
+    }
+
     function readLocalConfig() {
       try {
         return normalizeConfig(JSON.parse(localStorage.getItem(CONFIG_KEY) || "null"));
@@ -235,7 +240,7 @@ window.__ModuleLoader__.load({
     const { PersonaSeat } = (() => {
     const STORAGE_KEY = "dsh-plugin-persona:worn";
     const API = "/dsh-plugin-persona";
-    const EMPTY = "Empty soul. Drop a persona PNG, or click to pick one.";
+    const EMPTY = "Empty Character. Drop a Character PNG, or click to pick one.";
 
     const css = `
 .dshwear-marker{position:absolute;width:0;height:0;overflow:hidden;pointer-events:none}
@@ -445,11 +450,11 @@ window.__ModuleLoader__.load({
       }
       const names = fileNames(card.files);
       if (!names.includes("SOUL.md") && !names.includes("SKILL.md") && !names.includes("ROLE.md")) {
-        throw new Error("Persona card needs SOUL.md");
+        throw new Error("Character card needs SOUL.md");
       }
       const thumb = await makeThumb(bytes);
       return {
-        name: String(card.name).trim(),
+        name: bareSkillName(String(card.name).trim()),
         description: String(card.description ?? "").trim(),
         kind: String(card.kind ?? ""),
         thumb,
@@ -578,7 +583,7 @@ window.__ModuleLoader__.load({
       }, [kind, open, placeMenu]);
 
       const eventName = kind === "role" ? "dsh-roles-wear" : "dsh-persona-wear";
-      const empty = kind === "role" ? "No role cards in the gallery." : "No soul cards in the gallery.";
+      const empty = kind === "role" ? "No class cards in the gallery." : "No Character cards in the gallery.";
 
       return React.createElement(React.Fragment, null,
         React.createElement("button", {
@@ -849,7 +854,7 @@ window.__ModuleLoader__.load({
           saveLocal(null);
           window.dispatchEvent(new CustomEvent("dsh-persona-changed", { detail: { name: null } }));
           if (record) patchActive({ soul: null });
-          show(prev ? `Unequipped ${prev}.` : "Empty soul.");
+          show(prev ? `Unequipped ${prev}.` : "Empty Character.");
         } catch (error) {
           show(String(error?.message ?? error));
         } finally {
@@ -958,7 +963,7 @@ window.__ModuleLoader__.load({
         const file = [...event.dataTransfer.files].find((f) =>
           f.type === "image/png" || f.name.toLowerCase().endsWith(".png"));
         if (!file) {
-          show("Drop a persona PNG.");
+          show("Drop a Character PNG.");
           return;
         }
         void wearFile(file);
@@ -967,10 +972,10 @@ window.__ModuleLoader__.load({
       const avatar = worn || roleWorn;
       const avatarSrc = worn?.face || worn?.thumb || roleWorn?.face || roleWorn?.thumb;
       const avatarTitle = worn
-        ? `${worn.name}${worn.description ? ` — ${worn.description}` : ""}\nClick for loadout. Right-click or × to remove soul.`
+        ? `${worn.name}${worn.description ? ` — ${worn.description}` : ""}\nClick for loadout. Right-click or × to remove Character.`
         : roleWorn
-          ? `${prettyName(roleWorn.name)}${roleWorn.description ? ` — ${roleWorn.description}` : ""}\nClick for loadout. Right-click or × to remove role.`
-          : "Empty loadout. Click to add a soul or role.";
+          ? `${prettyName(roleWorn.name)}${roleWorn.description ? ` — ${roleWorn.description}` : ""}\nClick for loadout. Right-click or × to remove class.`
+          : "Empty loadout. Click to add a Character or class.";
 
       // Cycle through registered cards of the worn kind with hover arrows.
       const cycleKind = worn ? "persona" : "role";
@@ -1012,7 +1017,7 @@ window.__ModuleLoader__.load({
             "aria-label": worn
               ? `Wearing ${worn.name}. Open loadout.`
               : roleWorn
-                ? `Wearing role ${prettyName(roleWorn.name)}. Open loadout.`
+                ? `Wearing class ${prettyName(roleWorn.name)}. Open loadout.`
                 : "Open loadout",
             "aria-expanded": sheet ? "true" : "false",
             onDragEnter: onDrag,
@@ -1040,8 +1045,8 @@ window.__ModuleLoader__.load({
             ? React.createElement("button", {
                 type: "button",
                 className: "dshwear-unequip",
-                "aria-label": worn ? `Remove soul ${worn.name}` : `Remove role ${prettyName(roleWorn.name)}`,
-                title: worn ? "Remove soul" : "Remove role",
+                "aria-label": worn ? `Remove Character ${worn.name}` : `Remove class ${prettyName(roleWorn.name)}`,
+                title: worn ? "Remove Character" : "Remove class",
                 onClick: (event) => {
                   event.stopPropagation();
                   if (worn) void unequip();
@@ -1054,15 +1059,15 @@ window.__ModuleLoader__.load({
                 React.createElement("button", {
                   type: "button",
                   className: "dshwear-cycle prev",
-                  "aria-label": `Previous ${cycleKind === "role" ? "role" : "soul"}`,
-                  title: `Previous ${cycleKind === "role" ? "role" : "soul"}`,
+                  "aria-label": `Previous ${cycleKind === "role" ? "class" : "character"}`,
+                  title: `Previous ${cycleKind === "role" ? "class" : "character"}`,
                   onClick: (event) => { event.stopPropagation(); swap(-1); },
                 }, "‹"),
                 React.createElement("button", {
                   type: "button",
                   className: "dshwear-cycle next",
-                  "aria-label": `Next ${cycleKind === "role" ? "role" : "soul"} (${cycleNames.length} registered)`,
-                  title: `Next ${cycleKind === "role" ? "role" : "soul"}`,
+                  "aria-label": `Next ${cycleKind === "role" ? "class" : "character"} (${cycleNames.length} registered)`,
+                  title: `Next ${cycleKind === "role" ? "class" : "character"}`,
                   onClick: (event) => { event.stopPropagation(); swap(1); },
                 }, "›"),
               )
@@ -1081,9 +1086,7 @@ window.__ModuleLoader__.load({
             },
           }),
           React.createElement("div", { className: "dshwear-live", role: "status", "aria-live": "polite" }, hint),
-          worn || roleWorn
-            ? React.createElement("div", { "data-dsh-role-chip": "1" })
-            : null,
+          React.createElement("div", { "data-dsh-role-chip": "1" }),
         ),
       ),
         sheet && typeof document !== "undefined"
@@ -1139,7 +1142,7 @@ window.__ModuleLoader__.load({
                   prettyName(worn?.name) || prettyName(roleWorn?.name) || "New agent"),
                 React.createElement("div", { className: "dshwear-kit" },
                   React.createElement("div", { className: "dshwear-kit-head" },
-                    React.createElement("p", { className: "dshwear-sheet-kicker" }, "Soul"),
+                    React.createElement("p", { className: "dshwear-sheet-kicker" }, "Character"),
                     worn
                       ? React.createElement("button", {
                           type: "button",
@@ -1159,8 +1162,8 @@ window.__ModuleLoader__.load({
                             "data-empty": "0",
                             "data-over": over ? "1" : "0",
                             "data-busy": busy ? "1" : "0",
-                            title: `${worn.name}\nDrop a persona PNG to swap.`,
-                            "aria-label": `Swap persona ${worn.name}`,
+                            title: `${worn.name}\nDrop a Character PNG to swap.`,
+                            "aria-label": `Swap Character ${worn.name}`,
                             onDragEnter: onDrag,
                             onDragOver: onDrag,
                             onDragLeave: onDrag,
@@ -1182,18 +1185,18 @@ window.__ModuleLoader__.load({
                           React.createElement("p", { className: "dshwear-copy-name" }, worn.name),
                           React.createElement("p", { className: "dshwear-copy-def" }, "Who you are. Voice and values stay on."),
                           React.createElement("p", { className: "dshwear-copy-desc" },
-                            worn.description || "Drop a persona PNG, or click the portrait to swap."),
+                            worn.description || "Drop a Character PNG, or click the portrait to swap."),
                         ),
                       )
                     : React.createElement("p", { className: "dshwear-kit-empty" },
-                        "No soul. Add one from the gallery."),
+                        "No Character. Add one from the gallery."),
                   worn
                     ? React.createElement("div", { "data-dsh-loadout-skills": "soul" })
                     : null,
                 ),
                 React.createElement("div", { className: "dshwear-kit" },
                   React.createElement("div", { className: "dshwear-kit-head" },
-                    React.createElement("p", { className: "dshwear-sheet-kicker" }, "Role"),
+                    React.createElement("p", { className: "dshwear-sheet-kicker" }, "Class"),
                     roleWorn
                       ? React.createElement("button", {
                           type: "button",
@@ -1233,7 +1236,7 @@ window.__ModuleLoader__.load({
     const { RoleSeat } = (() => {
     const STORAGE_KEY = "dsh-plugin-roles:worn";
     const API = "/dsh-plugin-roles";
-    const EMPTY = "Empty role. Drop a class PNG, or click to pick one.";
+    const EMPTY = "Empty class. Drop a class PNG, or click to pick one.";
 
     const css = `
 .dshr-marker{position:absolute;width:0;height:0;overflow:hidden;pointer-events:none}
@@ -1400,11 +1403,11 @@ window.__ModuleLoader__.load({
       }
       const names = Object.keys(card.files);
       if (!names.includes("SKILL.md") && !names.includes("ROLE.md")) {
-        throw new Error("Role card needs SKILL.md");
+        throw new Error("Class card needs SKILL.md");
       }
       const thumb = await makeThumb(bytes);
       return {
-        name: String(card.name).trim(),
+        name: bareSkillName(String(card.name).trim()),
         description: String(card.description ?? "").trim(),
         thumb,
         face: pngBlobUrl(bytes),
@@ -1414,7 +1417,7 @@ window.__ModuleLoader__.load({
 
     function prettyRole(name) {
       const raw = String(name || "").trim();
-      if (!raw) return "Role";
+      if (!raw) return "Class";
       return raw.replace(/[-_]+/g, " ").replace(/\b[a-z]/g, (ch) => ch.toUpperCase());
     }
 
@@ -1500,8 +1503,8 @@ window.__ModuleLoader__.load({
             "data-busy": busy ? "1" : "0",
             "aria-haspopup": "listbox",
             "aria-expanded": open ? "true" : "false",
-            title: worn ? `Role: ${prettyRole(worn.name)}. Click to swap.` : "Pick a role",
-            "aria-label": worn ? `Role ${prettyRole(worn.name)}` : "Pick a role",
+            title: worn ? `Class: ${prettyRole(worn.name)}. Click to swap.` : "Pick a class",
+            "aria-label": worn ? `Class ${prettyRole(worn.name)}` : "Pick a class",
             onClick: (event) => {
               event.stopPropagation();
               setOpen((cur) => !cur);
@@ -1517,7 +1520,7 @@ window.__ModuleLoader__.load({
               className: "dshr-chipmenu",
               "data-dsh-role-chip-menu": "1",
               role: "listbox",
-              "aria-label": "Roles",
+              "aria-label": "Classes",
               style: { top: `${menu.top}px`, left: `${menu.left}px` },
             },
               roles.length
@@ -1537,7 +1540,7 @@ window.__ModuleLoader__.load({
                 : React.createElement("div", {
                     className: "dshr-chipopt",
                     "data-muted": "1",
-                  }, "No role cards in the gallery."),
+                  }, "No class cards in the gallery."),
               worn
                 ? React.createElement("button", {
                     type: "button",
@@ -1581,6 +1584,8 @@ window.__ModuleLoader__.load({
       const [hint, setHint] = React.useState("");
       const fileRef = React.useRef(null);
       const faceRef = React.useRef(null);
+      const wornRef = React.useRef(worn);
+      wornRef.current = worn;
 
       const show = React.useCallback((text) => {
         setHint(text);
@@ -1602,24 +1607,21 @@ window.__ModuleLoader__.load({
             const body = await res.json().catch(() => ({}));
             if (cancelled) return;
             const name = body.name || null;
-            if (!name) {
-              setWorn(null);
-              saveLocal(null);
-              return;
-            }
-            setWorn((cur) => {
-              const next = cur && cur.name === name
-                ? { ...cur, description: body.description || cur.description }
-                : { name, description: body.description || "", thumb: cur?.name === name ? cur.thumb : null };
-              saveLocal(next);
-              return next;
-            });
+            const cur = wornRef.current;
+            const changed = cur?.name !== name;
+            const next = !name ? null : cur?.name === name
+              ? { ...cur, description: body.description || cur.description }
+              : { name, description: body.description || "", thumb: null };
+            if (changed) adoptFace(null);
+            wornRef.current = next;
+            setWorn(next);
+            saveLocal(next);
+            if (changed) window.dispatchEvent(new CustomEvent("dsh-roles-changed", { detail: { name } }));
           }).catch(() => { /* host not ready */ });
         };
         syncWorn();
         window.addEventListener("dsh-roles-changed", syncWorn);
-        // The agent can switch wear autonomously via the host API, which fires
-        // no client event. Poll so the seat reflects any path to a change.
+        // Poll host state, then fan autonomous changes through the existing wear event.
         const timer = window.setInterval(syncWorn, 4000);
         return () => {
           cancelled = true;
@@ -1712,7 +1714,7 @@ window.__ModuleLoader__.load({
           setWorn(null);
           saveLocal(null);
           window.dispatchEvent(new CustomEvent("dsh-roles-changed", { detail: { name: null, record } }));
-          show(prev ? `Unequipped ${prev}.` : "Empty role.");
+          show(prev ? `Unequipped ${prev}.` : "Empty class.");
         } catch (error) {
           show(String(error?.message ?? error));
         } finally {
@@ -1746,7 +1748,7 @@ window.__ModuleLoader__.load({
             "data-empty": "0",
             "data-over": over ? "1" : "0",
             "data-busy": busy ? "1" : "0",
-            title: `${worn.name}${worn.description ? ` — ${worn.description}` : ""}\nDrop a role PNG to swap.`,
+            title: `${worn.name}${worn.description ? ` — ${worn.description}` : ""}\nDrop a class PNG to swap.`,
             "aria-label": `Wearing ${prettyRole(worn.name)}`,
             onDragEnter: onDrag,
             onDragOver: onDrag,
@@ -1756,7 +1758,7 @@ window.__ModuleLoader__.load({
               const file = [...event.dataTransfer.files].find((f) =>
                 f.type === "image/png" || f.name.toLowerCase().endsWith(".png"));
               if (!file) {
-                show("Drop a role PNG.");
+                show("Drop a class PNG.");
                 return;
               }
               void wearFile(file);
@@ -1792,7 +1794,7 @@ window.__ModuleLoader__.load({
             const file = [...event.dataTransfer.files].find((f) =>
               f.type === "image/png" || f.name.toLowerCase().endsWith(".png"));
             if (!file) {
-              show("Drop a role PNG.");
+              show("Drop a class PNG.");
               return;
             }
             void wearFile(file);
@@ -1801,23 +1803,21 @@ window.__ModuleLoader__.load({
           React.createElement("p", { className: "dshwear-copy-name" }, prettyRole(worn.name)),
           React.createElement("p", { className: "dshwear-copy-def" }, "The job. Standing instructions while worn."),
           React.createElement("p", { className: "dshwear-copy-desc" },
-            worn.description || "Drop a role PNG, or click the square to swap."),
+            worn.description || "Drop a class PNG, or click the square to swap."),
         ),
         )
           : null,
       ),
-      worn
-        ? React.createElement(SidebarChipPortal, null,
-            React.createElement(RoleChip, {
-              worn,
-              busy,
-              onWear: (name) => {
-                window.dispatchEvent(new CustomEvent("dsh-roles-wear", { detail: { name } }));
-              },
-              onUnequip: unequip,
-            }),
-          )
-        : null,
+      React.createElement(SidebarChipPortal, null,
+        React.createElement(RoleChip, {
+          worn,
+          busy,
+          onWear: (name) => {
+            window.dispatchEvent(new CustomEvent("dsh-roles-wear", { detail: { name } }));
+          },
+          onUnequip: unequip,
+        }),
+      ),
       );
     }
 
@@ -1937,7 +1937,9 @@ body>[role="status"]:has(svg[viewBox="0 0 115 84"]){display:none!important}
         const next = emptySlots();
         for (let i = 0; i < SLOT_COUNT; i += 1) {
           const row = parsed[i];
-          if (row && typeof row.name === "string") next[i] = row;
+          if (row && typeof row.name === "string") {
+            next[i] = { ...row, name: bareSkillName(row.name) };
+          }
         }
         return next;
       } catch {
@@ -2036,7 +2038,7 @@ body>[role="status"]:has(svg[viewBox="0 0 115 84"]){display:none!important}
       }
       const thumb = await makeThumb(bytes);
       return {
-        name: String(card.name).trim(),
+        name: bareSkillName(String(card.name).trim()),
         description: String(card.description ?? "").trim(),
         thumb,
         files: card.files,
@@ -2379,7 +2381,7 @@ body>[role="status"]:has(svg[viewBox="0 0 115 84"]){display:none!important}
 
       const renderSlots = (kind, prefix, numbered) => {
         const slots = kind === "soul" ? soulSlots : kind === "role" ? roleSlots : userSlots;
-        const label = kind === "soul" ? "Soul skill slots" : kind === "role" ? "Role skill slots" : "Skill slots";
+        const label = kind === "soul" ? "Character skill slots" : kind === "role" ? "Class skill slots" : "Skill slots";
         return React.createElement("div", {
           className: "dshsb-slots",
           role: "toolbar",
@@ -2637,7 +2639,7 @@ body>[role="status"]:has(svg[viewBox="0 0 115 84"]){display:none!important}
           ),
         ),
         React.createElement("div", { className: "dshsc-row" },
-          React.createElement("span", null, "Sidebar persona & role seats"),
+          React.createElement("span", null, "Sidebar Character & class seats"),
           React.createElement("label", null,
             React.createElement("input", {
               type: "checkbox",

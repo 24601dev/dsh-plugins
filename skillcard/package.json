@@ -1,8 +1,8 @@
 {
   "name": "dsh-plugin-skillcard",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
-  "description": "Wear skill_card_v1 soul, role, and skill seats. Press/authoring is dsh-plugin-skillpress.",
+  "description": "Wear skill_card_v1 Character, class, and skill seats with legacy persona and role compatibility. Press/authoring is dsh-plugin-skillpress.",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
@@ -25,9 +25,13 @@
       "platform": "web"
     }
   },
+  "scripts": {
+    "test": "node --test"
+  },
   "files": [
     "lib/index.js",
     "lib/config.js",
+    "lib/class-skill-sync.js",
     "lib/soul.js",
     "lib/role.js",
     "lib/skill.js",
