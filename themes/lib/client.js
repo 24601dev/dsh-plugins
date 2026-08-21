@@ -448,6 +448,96 @@ window.__ModuleLoader__.load({
         },
       },
       {
+        id: "wayfarer",
+        label: "Wayfarer",
+        blurb: "Celestial parchment. Mist blue, ivory, antique gold.",
+        face: "'Palatino Linotype', Palatino, Georgia",
+        codeFace: null,
+        faceLabel: "Palatino / Georgia",
+        swatch: { light: "#e1e9e6", dark: "#121e2d" },
+        accent: { light: "#7e5d1a", dark: "#e2c67e" },
+        // Celestial parchment translates the reference's material relationships
+        // rather than its branded art: a scenic field behind ivory/navy panels,
+        // slate type, and antique-gold keylines. Filled actions use a deeper
+        // bronze than the decorative gold so their light labels retain contrast.
+        light: {
+          "bg-base": "rgb(225, 233, 230)",
+          "bg-layer-1": "rgb(249, 246, 232)",
+          "bg-layer-2": "rgb(242, 237, 216)",
+          "bg-layer-3": "rgb(231, 225, 200)",
+          "bg-overlay": "rgb(254, 251, 239)",
+          "bg-module-platform": "rgb(242, 237, 216)",
+          "border-l1": "rgba(112, 91, 43, 0.16)",
+          "border-l2": "rgba(112, 91, 43, 0.36)",
+          "label-primary": "rgb(51, 61, 73)",
+          "label-secondary": "rgb(76, 87, 98)",
+          "label-tertiary": "rgb(99, 108, 116)",
+          "brand-primary": "rgb(51, 61, 73)",
+          "state-business-primary": "rgb(126, 93, 26)",
+          "interactive-bg-hover": "rgba(126, 93, 26, 0.1)",
+          "sidebar-fill": "rgba(249, 246, 232, 0.88)",
+          "input-major": "rgba(254, 251, 239, 0.9)",
+          "tip": "rgba(249, 246, 232, 0.92)",
+          "button-info-fill": "rgb(120, 82, 24)",
+          "button-info-hover": "rgb(143, 100, 32)",
+          "button-contrast-fill": "rgb(51, 61, 73)",
+          "button-primary-fill": "rgb(120, 82, 24)",
+          "button-primary-hover": "rgb(143, 100, 32)",
+          "button-primary-dimmed": "rgba(126, 93, 26, 0.14)",
+          "button-elevated-fill": "rgba(254, 251, 239, 0.92)",
+          "button-floating-fill": "rgba(249, 246, 232, 0.9)",
+          "button-floating-hover": "rgb(242, 237, 216)",
+          "button-ghost-active-border": "rgba(112, 91, 43, 0.46)",
+          "button-ghost-active-fill": "rgba(126, 93, 26, 0.12)",
+          "button-ghost-active-hover": "rgba(126, 93, 26, 0.2)",
+          "button-tool-bar-fill": "rgba(249, 246, 232, 0.88)",
+          "button-tool-bar-hover": "rgb(242, 237, 216)",
+          "button-tool-bar-fill-invisible": "rgba(51, 61, 73, 0.06)",
+          "interactive-bg-hover-solid": "rgb(242, 237, 216)",
+          "selector": "rgba(126, 93, 26, 0.1)",
+          "bubble": "rgba(249, 246, 232, 0.9)",
+          "menu": "rgb(254, 251, 239)",
+        },
+        dark: {
+          "bg-base": "rgb(18, 30, 45)",
+          "bg-layer-1": "rgb(27, 41, 55)",
+          "bg-layer-2": "rgb(35, 51, 65)",
+          "bg-layer-3": "rgb(45, 62, 76)",
+          "bg-overlay": "rgb(23, 36, 50)",
+          "bg-module-platform": "rgb(35, 51, 65)",
+          "border-l1": "rgba(226, 198, 126, 0.2)",
+          "border-l2": "rgba(226, 198, 126, 0.48)",
+          "label-primary": "rgb(245, 239, 220)",
+          "label-secondary": "rgb(207, 212, 211)",
+          "label-tertiary": "rgb(159, 171, 176)",
+          "brand-primary": "rgb(245, 239, 220)",
+          "state-business-primary": "rgb(226, 198, 126)",
+          "interactive-bg-hover": "rgba(226, 198, 126, 0.12)",
+          "sidebar-fill": "rgba(22, 35, 49, 0.88)",
+          "input-major": "rgba(27, 41, 55, 0.9)",
+          "tip": "rgba(27, 41, 55, 0.92)",
+          "button-info-fill": "rgb(128, 91, 31)",
+          "button-info-hover": "rgb(148, 108, 42)",
+          "button-contrast-fill": "rgb(245, 239, 220)",
+          "button-primary-fill": "rgb(128, 91, 31)",
+          "button-primary-hover": "rgb(148, 108, 42)",
+          "button-primary-dimmed": "rgba(226, 198, 126, 0.14)",
+          "button-elevated-fill": "rgba(35, 51, 65, 0.92)",
+          "button-floating-fill": "rgba(22, 35, 49, 0.9)",
+          "button-floating-hover": "rgb(45, 62, 76)",
+          "button-ghost-active-border": "rgba(226, 198, 126, 0.5)",
+          "button-ghost-active-fill": "rgba(226, 198, 126, 0.12)",
+          "button-ghost-active-hover": "rgba(226, 198, 126, 0.2)",
+          "button-tool-bar-fill": "rgba(35, 51, 65, 0.88)",
+          "button-tool-bar-hover": "rgb(45, 62, 76)",
+          "button-tool-bar-fill-invisible": "rgba(18, 30, 45, 0.22)",
+          "interactive-bg-hover-solid": "rgb(45, 62, 76)",
+          "selector": "rgba(226, 198, 126, 0.1)",
+          "bubble": "rgba(35, 51, 65, 0.9)",
+          "menu": "rgb(27, 41, 55)",
+        },
+      },
+      {
         id: "phantom",
         label: "Phantom",
         blurb: "Pop-punk menus. Black, white, one red.",
@@ -597,7 +687,8 @@ window.__ModuleLoader__.load({
         .join("\n") +
         arasakaAtmosphere() +
         militechAtmosphere() +
-        phantomAtmosphere();
+        phantomAtmosphere() +
+        wayfarerAtmosphere();
     }
 
     // Chamfers are Arasaka-only. Militech shares ticks and square frames,
@@ -827,6 +918,60 @@ ${dark} [data-composer-card]{background:#000!important;border:2px solid #fff!imp
 ${dark} [data-composer-card] button[aria-label="Send message"],${dark} [data-composer-card] button[aria-label="发送消息"]{filter:${cutWhite}}
 @media (prefers-reduced-motion:reduce){
 ${sel} .hHd-Xa_root:not(.hHd-Xa_collapsed) .hHd-Xa_newSession:hover{filter:${cutWhite}}
+}
+`;
+    }
+
+    function wayfarerAtmosphere() {
+      const sel = `body[${THEME_ATTR}="wayfarer"]`;
+      const dark = `${sel}[data-ds-dark-theme]`;
+      const gold = "var(--dsw-alias-state-business-primary)";
+      // Four short keylines suggest a compass point without copying any game
+      // ornament. They frame only the composer and selected theme specimen.
+      const corners = (fill) =>
+        `linear-gradient(${gold},${gold}) left 8px top/18px 1px no-repeat,` +
+        `linear-gradient(${gold},${gold}) left top 8px/1px 18px no-repeat,` +
+        `linear-gradient(${gold},${gold}) right 8px bottom/18px 1px no-repeat,` +
+        `linear-gradient(${gold},${gold}) right bottom 8px/1px 18px no-repeat,` +
+        fill;
+      const lightField =
+        "radial-gradient(ellipse at 16% 8%,rgba(255,255,255,.82),transparent 34%)," +
+        "radial-gradient(ellipse at 86% 84%,rgba(126,167,171,.38),transparent 46%)," +
+        "linear-gradient(145deg,rgb(225,233,230) 0%,rgb(196,216,214) 54%,rgb(177,198,210) 100%)";
+      const darkField =
+        "radial-gradient(circle at 78% 18%,rgba(226,198,126,.13),transparent 22%)," +
+        "radial-gradient(ellipse at 18% 82%,rgba(57,111,127,.32),transparent 44%)," +
+        "linear-gradient(145deg,rgb(18,30,45) 0%,rgb(20,43,57) 52%,rgb(10,20,34) 100%)";
+      const lightGlass = "rgba(249,246,232,.84)";
+      const darkGlass = "rgba(22,35,49,.82)";
+      const glass =
+        "backdrop-filter:blur(18px) saturate(.92);" +
+        "-webkit-backdrop-filter:blur(18px) saturate(.92)";
+      return `
+${sel}{background-color:rgb(225,233,230)!important;background-image:${lightField}!important;background-attachment:fixed!important}
+${sel} [class*="centerCol"]{background-color:rgb(225,233,230)!important;background-image:${lightField}!important;background-attachment:fixed!important}
+${sel} [data-phase],${sel} .hHd-Xa_root{background:transparent!important}
+${sel} [class*="sidebarCol"]{background:${lightGlass}!important;border-right:1px solid var(--dsw-alias-border-l2)}
+${sel} [class*="detailsCol"],${sel} .wSkVaW_header{background:${lightGlass}!important;${glass}}
+${sel} [class*="detailsCol"]{border-left:1px solid var(--dsw-alias-border-l2)}
+${sel} [class*="header"],${sel} button{letter-spacing:.025em}
+${sel} textarea,${sel} [class$="_input"],${sel} [class$="_mirror"],${sel} [class$="_backdrop"]{letter-spacing:0!important}
+${sel} ::selection{background:rgba(126,93,26,.28);color:var(--dsw-alias-label-primary)}
+${sel} button:focus-visible,${sel} [role="button"]:focus-visible{outline:2px solid ${gold}!important;outline-offset:2px}
+${sel} .dshth-name{letter-spacing:.06em}
+${sel} .dshth-card[aria-pressed="true"]{background:${corners("var(--dsw-alias-bg-layer-1)")}!important}
+${sel} .hHd-Xa_root:not(.hHd-Xa_collapsed) .hHd-Xa_newSession{border-color:${gold}!important;box-shadow:0 3px 14px rgba(51,61,73,.12)}
+${sel} [data-composer-card]{background:${corners("rgba(254,251,239,.9)")}!important;border:1px solid var(--dsw-alias-border-l2)!important;box-shadow:0 10px 34px rgba(51,61,73,.14);${glass}}
+${sel} .wSkVaW_composerSeat{background:linear-gradient(180deg,transparent 0,rgba(196,216,214,.54) 44px,rgba(177,198,210,.9) 92px)!important}
+${dark}{background-color:rgb(18,30,45)!important;background-image:${darkField}!important}
+${dark} [class*="centerCol"]{background-color:rgb(18,30,45)!important;background-image:${darkField}!important}
+${dark} [class*="sidebarCol"],${dark} [class*="detailsCol"],${dark} .wSkVaW_header{background:${darkGlass}!important}
+${dark} [data-composer-card]{background:${corners("rgba(27,41,55,.9)")}!important;box-shadow:0 10px 36px rgba(5,12,22,.4)}
+${dark} .wSkVaW_composerSeat{background:linear-gradient(180deg,transparent 0,rgba(10,20,34,.5) 44px,rgba(10,20,34,.94) 92px)!important}
+${dark} ::selection{background:rgba(226,198,126,.34);color:rgb(245,239,220)}
+@media (prefers-reduced-transparency:reduce){
+${sel} [class*="sidebarCol"],${sel} [class*="detailsCol"],${sel} .wSkVaW_header,${sel} [data-composer-card]{backdrop-filter:none;-webkit-backdrop-filter:none;background:rgb(249,246,232)!important}
+${dark} [class*="sidebarCol"],${dark} [class*="detailsCol"],${dark} .wSkVaW_header,${dark} [data-composer-card]{background:rgb(27,41,55)!important}
 }
 `;
     }
